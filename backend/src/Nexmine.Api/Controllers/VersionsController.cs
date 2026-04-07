@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nexmine.Api.Filters;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
 
@@ -18,8 +19,10 @@ public class VersionsController : ControllerBase
     }
 
     [HttpGet]
+    [ProjectMember]
     [ProducesResponseType(typeof(List<VersionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ListAsync(string identifier)
     {
         var versions = await _versionService.ListByProjectAsync(identifier);
@@ -27,8 +30,10 @@ public class VersionsController : ControllerBase
     }
 
     [HttpPost]
+    [ProjectManager]
     [ProducesResponseType(typeof(VersionDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateAsync(string identifier, [FromBody] CreateVersionRequest request)
     {
         var version = await _versionService.CreateAsync(identifier, request);

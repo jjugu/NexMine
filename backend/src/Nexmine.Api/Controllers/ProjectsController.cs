@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexmine.Api.Extensions;
+using Nexmine.Api.Filters;
 using Nexmine.Application.Features.Projects.Dtos;
 using Nexmine.Application.Features.Projects.Interfaces;
 
@@ -60,8 +61,10 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpPut("{identifier}")]
+    [ProjectManager]
     [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateAsync(string identifier, [FromBody] UpdateProjectRequest request)
     {
         var project = await _projectService.UpdateAsync(identifier, request);
@@ -80,8 +83,10 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpDelete("{identifier}")]
+    [ProjectManager]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ArchiveAsync(string identifier)
     {
         var success = await _projectService.ArchiveAsync(identifier);

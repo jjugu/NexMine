@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Chip, Card, CardContent, Skeleton,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, Paper, Button, Alert, Grid,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem, Select, FormControl, InputLabel,
+  Autocomplete, CircularProgress,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LockIcon from '@mui/icons-material/Lock';
@@ -33,6 +37,43 @@ function fetchVersions(identifier: string) {
 export default function ProjectDetailPage() {
   const { identifier } = useParams<{ identifier: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{ id: number; username: string; email: string; displayName: string } | null>(null);
+  const [newMemberRoleId, setNewMemberRoleId] = useState(2);
+  const [addMemberError, setAddMemberError] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState('');
+
+  const userSearchQuery = useQuery({
+    queryKey: ['user-search', userSearch],
+    queryFn: () => axiosInstance.get(`/Users/search`, { params: { q: userSearch } }).then((r) => r.data as { id: number; username: string; email: string; displayName: string }[]),
+    enabled: isAddMemberOpen,
+    staleTime: 10_000,
+  });
+
+  const addMemberMutation = useMutation({
+    mutationFn: () =>
+      axiosInstance.post(`/projects/${identifier}/members`, {
+        userId: selectedUser!.id,
+        roleId: newMemberRoleId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-members', identifier] });
+      setIsAddMemberOpen(false);
+      setSelectedUser(null);
+      setNewMemberRoleId(2);
+      setAddMemberError(null);
+      setUserSearch('');
+    },
+    onError: (err: unknown) => {
+      const axiosError = err as { response?: { data?: { detail?: string; title?: string } } };
+      setAddMemberError(
+        axiosError.response?.data?.detail ||
+        axiosError.response?.data?.title ||
+        '멤버 추가에 실패했습니다.',
+      );
+    },
+  });
 
   const projectQuery = useQuery({
     queryKey: ['project', identifier],
@@ -173,7 +214,12 @@ export default function ProjectDetailPage() {
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">멤버</Typography>
-          <Button variant="outlined" startIcon={<PersonAddIcon />} size="small" disabled>
+          <Button
+            variant="outlined"
+            startIcon={<PersonAddIcon />}
+            size="small"
+            onClick={() => { setAddMemberError(null); setIsAddMemberOpen(true); }}
+          >
             멤버 추가
           </Button>
         </Box>
@@ -219,6 +265,72 @@ export default function ProjectDetailPage() {
           </TableContainer>
         )}
       </Box>
+
+      {/* Add Member Dialog */}
+      <Dialog open={isAddMemberOpen} onClose={() => setIsAddMemberOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>멤버 추가</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
+          {addMemberError && <Alert severity="error">{addMemberError}</Alert>}
+          <Autocomplete
+            options={userSearchQuery.data ?? []}
+            getOptionLabel={(option) => `${option.displayName} (${option.username})`}
+            renderOption={(props, option) => (
+              <li {...props} key={option.id}>
+                <Box>
+                  <Typography variant="body2">{option.displayName}</Typography>
+                  <Typography variant="caption" color="text.secondary">@{option.username} · {option.email}</Typography>
+                </Box>
+              </li>
+            )}
+            value={selectedUser}
+            onChange={(_, value) => setSelectedUser(value)}
+            onInputChange={(_, value) => setUserSearch(value)}
+            loading={userSearchQuery.isLoading}
+            noOptionsText="사용자를 찾을 수 없습니다"
+            loadingText="검색 중..."
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="사용자 검색"
+                placeholder="이름, 아이디, 이메일로 검색"
+                slotProps={{
+                  input: {
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {userSearchQuery.isLoading ? <CircularProgress size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  },
+                }}
+              />
+            )}
+          />
+          <FormControl fullWidth>
+            <InputLabel>역할</InputLabel>
+            <Select
+              value={newMemberRoleId}
+              label="역할"
+              onChange={(e) => setNewMemberRoleId(Number(e.target.value))}
+            >
+              <MenuItem value={1}>Manager</MenuItem>
+              <MenuItem value={2}>Developer</MenuItem>
+              <MenuItem value={3}>Reporter</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setIsAddMemberOpen(false)}>취소</Button>
+          <Button
+            variant="contained"
+            onClick={() => addMemberMutation.mutate()}
+            disabled={!selectedUser || addMemberMutation.isPending}
+          >
+            {addMemberMutation.isPending ? '추가 중...' : '추가'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

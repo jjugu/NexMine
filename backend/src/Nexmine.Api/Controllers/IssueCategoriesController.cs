@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nexmine.Api.Filters;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
 
@@ -18,8 +19,10 @@ public class IssueCategoriesController : ControllerBase
     }
 
     [HttpGet]
+    [ProjectMember]
     [ProducesResponseType(typeof(List<IssueCategoryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ListAsync(string identifier)
     {
         var categories = await _categoryService.ListByProjectAsync(identifier);
@@ -27,8 +30,10 @@ public class IssueCategoriesController : ControllerBase
     }
 
     [HttpPost]
+    [ProjectManager]
     [ProducesResponseType(typeof(IssueCategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateAsync(string identifier, [FromBody] CreateIssueCategoryRequest request)
     {
         var category = await _categoryService.CreateAsync(identifier, request);
@@ -36,8 +41,10 @@ public class IssueCategoriesController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [ProjectManager]
     [ProducesResponseType(typeof(IssueCategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateAsync(int id, [FromBody] UpdateIssueCategoryRequest request)
     {
         var category = await _categoryService.UpdateAsync(id, request);
@@ -56,8 +63,10 @@ public class IssueCategoriesController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [ProjectManager]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> DeleteAsync(int id)
     {
         var success = await _categoryService.DeleteAsync(id);

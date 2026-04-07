@@ -145,4 +145,6 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
 | 날짜 | 오류 내용 | 원인 | 해결책 | 방지 규칙 |
 |------|-----------|------|--------|-----------|
-| - | - | - | - | - |
+| 2026-04-07 | entries.reduce is not a function (TimeEntrySection 크래시) | 백엔드 time-entries API가 배열이 아닌 페이지네이션 객체 `{items,totalCount}` 반환하는데 프론트가 배열로 기대 | `Array.isArray(data) ? data : data.items` 패턴으로 안전 파싱 | API 응답 타입이 배열인지 페이지네이션 객체인지 반드시 확인 후 파싱 |
+| 2026-04-07 | Chrome 한국어 로케일에서 type="date" input에 `()` 요일 표시 | Chrome이 시스템 로케일(한국어)로 날짜 input을 렌더링, `lang="en"` 속성으로도 해결 불가 | `type="date"` 대신 MUI `@mui/x-date-pickers/DatePicker` 사용 | 날짜 입력에는 항상 MUI DatePicker 사용, 네이티브 type="date" 금지 |
+| 2026-04-07 | MUI TextField shrink 미동작 — setValue로 값 넣을 때 라벨과 값 겹침 | react-hook-form의 setValue가 MUI TextField의 내부 상태를 트리거하지 않아 label shrink 미감지 | `InputLabelProps={{ shrink: !!watch('field') }}` 또는 Controller 사용 | 프로그래밍 방식으로 값 설정 시 shrink 상태 수동 관리 필요 |

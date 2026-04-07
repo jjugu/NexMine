@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexmine.Api.Extensions;
+using Nexmine.Api.Filters;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
 
@@ -19,8 +20,10 @@ public class IssuesController : ControllerBase
     }
 
     [HttpGet("/api/projects/{identifier}/issues")]
+    [ProjectMember]
     [ProducesResponseType(typeof(Application.Common.Models.PagedResult<IssueDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ListByProjectAsync(string identifier, [FromQuery] IssueFilterParams filterParams)
     {
         var result = await _issueService.ListAsync(identifier, filterParams);
@@ -28,8 +31,10 @@ public class IssuesController : ControllerBase
     }
 
     [HttpPost("/api/projects/{identifier}/issues")]
+    [ProjectMember]
     [ProducesResponseType(typeof(IssueDetailDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateAsync(string identifier, [FromBody] CreateIssueRequest request)
     {
         var userId = User.GetUserId();

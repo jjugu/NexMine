@@ -44,7 +44,7 @@ function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
     { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki`, isDisabled: true },
     { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents`, isDisabled: true },
     { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions` },
-    { label: '설정', icon: <SettingsIcon />, path: `/projects/${identifier}/settings`, isDisabled: true },
+    { label: '설정', icon: <SettingsIcon />, path: `/projects/${identifier}/settings` },
   ];
 }
 
