@@ -51,5 +51,28 @@ public static class SeedData
                 UpdatedAt = utcNow
             }
         );
+
+        modelBuilder.Entity<Tracker>().HasData(
+            new Tracker { Id = 1, Name = "Bug", Position = 1, IsDefault = true, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new Tracker { Id = 2, Name = "Feature", Position = 2, IsDefault = false, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new Tracker { Id = 3, Name = "Task", Position = 3, IsDefault = false, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new Tracker { Id = 4, Name = "Support", Position = 4, IsDefault = false, CreatedAt = utcNow, UpdatedAt = utcNow }
+        );
+
+        modelBuilder.Entity<IssueStatus>().HasData(
+            new IssueStatus { Id = 1, Name = "New", IsClosed = false, Position = 1, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new IssueStatus { Id = 2, Name = "InProgress", IsClosed = false, Position = 2, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new IssueStatus { Id = 3, Name = "Resolved", IsClosed = false, Position = 3, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new IssueStatus { Id = 4, Name = "Feedback", IsClosed = false, Position = 4, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new IssueStatus { Id = 5, Name = "Closed", IsClosed = true, Position = 5, CreatedAt = utcNow, UpdatedAt = utcNow }
+        );
+
+        modelBuilder.Entity<IssuePriority>().HasData(
+            new IssuePriority { Id = 1, Name = "Low", IsDefault = false, Position = 1, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new IssuePriority { Id = 2, Name = "Normal", IsDefault = true, Position = 2, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new IssuePriority { Id = 3, Name = "High", IsDefault = false, Position = 3, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new IssuePriority { Id = 4, Name = "Urgent", IsDefault = false, Position = 4, CreatedAt = utcNow, UpdatedAt = utcNow },
+            new IssuePriority { Id = 5, Name = "Immediate", IsDefault = false, Position = 5, CreatedAt = utcNow, UpdatedAt = utcNow }
+        );
     }
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   Box, Drawer, AppBar, Toolbar, Typography, IconButton,
   List, ListItemButton, ListItemIcon, ListItemText, Divider,
@@ -9,6 +9,15 @@ import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderIcon from '@mui/icons-material/Folder';
 import LogoutIcon from '@mui/icons-material/Logout';
+import BugReportIcon from '@mui/icons-material/BugReport';
+import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import ArticleIcon from '@mui/icons-material/Article';
+import DescriptionIcon from '@mui/icons-material/Description';
+import NewReleasesIcon from '@mui/icons-material/NewReleases';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useAuthStore } from '../../stores/authStore';
 import axiosInstance from '../../api/axiosInstance';
 
@@ -19,13 +28,40 @@ const navItems = [
   { label: '프로젝트', icon: <FolderIcon />, path: '/projects' },
 ];
 
+interface ProjectSubNavItem {
+  label: string;
+  icon: React.ReactNode;
+  path: string;
+  isDisabled?: boolean;
+}
+
+function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
+  return [
+    { label: '이슈', icon: <BugReportIcon />, path: `/projects/${identifier}/issues` },
+    { label: '칸반', icon: <ViewKanbanIcon />, path: `/projects/${identifier}/kanban`, isDisabled: true },
+    { label: '간트', icon: <BarChartIcon />, path: `/projects/${identifier}/gantt`, isDisabled: true },
+    { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar`, isDisabled: true },
+    { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki`, isDisabled: true },
+    { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents`, isDisabled: true },
+    { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions` },
+    { label: '설정', icon: <SettingsIcon />, path: `/projects/${identifier}/settings`, isDisabled: true },
+  ];
+}
+
 export default function AppLayout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams<{ identifier?: string }>();
   const { user, clearAuth } = useAuthStore();
+
+  // Detect if we are inside a project context
+  const isProjectContext = location.pathname.match(/^\/projects\/[^/]+\/.+/);
+  const projectIdentifier = isProjectContext ? params.identifier ?? location.pathname.split('/')[2] : null;
+  const projectSubNav = projectIdentifier ? getProjectSubNav(projectIdentifier) : [];
 
   function handleMenuOpen(event: React.MouseEvent<HTMLElement>) {
     setAnchorEl(event.currentTarget);
@@ -64,6 +100,7 @@ export default function AppLayout() {
         {navItems.map((item) => (
           <ListItemButton
             key={item.path}
+            selected={location.pathname === item.path}
             onClick={() => {
               navigate(item.path);
               if (isMobile) setMobileOpen(false);
@@ -74,6 +111,45 @@ export default function AppLayout() {
             <ListItemText primary={item.label} />
           </ListItemButton>
         ))}
+
+        {/* Project sub-navigation */}
+        {projectIdentifier && projectSubNav.length > 0 && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <ListItemButton
+              onClick={() => {
+                navigate(`/projects/${projectIdentifier}`);
+                if (isMobile) setMobileOpen(false);
+              }}
+              sx={{ borderRadius: 1, mb: 0.5 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <ArrowBackIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary={projectIdentifier}
+                primaryTypographyProps={{ variant: 'body2', fontWeight: 600, noWrap: true }}
+              />
+            </ListItemButton>
+            {projectSubNav.map((item) => (
+              <ListItemButton
+                key={item.path}
+                selected={location.pathname.startsWith(item.path)}
+                disabled={item.isDisabled}
+                onClick={() => {
+                  if (!item.isDisabled) {
+                    navigate(item.path);
+                    if (isMobile) setMobileOpen(false);
+                  }
+                }}
+                sx={{ borderRadius: 1, mb: 0.5, pl: 2 }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            ))}
+          </>
+        )}
       </List>
     </Box>
   );

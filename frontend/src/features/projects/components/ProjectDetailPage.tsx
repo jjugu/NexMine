@@ -3,14 +3,16 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Chip, Card, CardContent, Skeleton,
   Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, Paper, Button, Alert, Tabs, Tab, Grid,
+  TableRow, Paper, Button, Alert, Grid,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LockIcon from '@mui/icons-material/Lock';
 import PublicIcon from '@mui/icons-material/Public';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import BugReportIcon from '@mui/icons-material/BugReport';
+import NewReleasesIcon from '@mui/icons-material/NewReleases';
 import axiosInstance from '../../../api/axiosInstance';
-import type { ProjectDto, ProjectMemberDto } from '../../../api/generated/model';
+import type { ProjectDto, ProjectMemberDto, IssueDtoPagedResult, VersionDto } from '../../../api/generated/model';
 
 function fetchProject(identifier: string) {
   return axiosInstance.get<ProjectDto>(`/Projects/${identifier}`).then((res) => res.data);
@@ -20,15 +22,13 @@ function fetchMembers(identifier: string) {
   return axiosInstance.get<ProjectMemberDto[]>(`/projects/${identifier}/members`).then((res) => res.data);
 }
 
-const tabItems = [
-  { label: '이슈', value: 'issues' },
-  { label: '칸반', value: 'kanban' },
-  { label: '간트', value: 'gantt' },
-  { label: '캘린더', value: 'calendar' },
-  { label: '위키', value: 'wiki' },
-  { label: '문서', value: 'documents' },
-  { label: '설정', value: 'settings' },
-];
+function fetchIssueStats(identifier: string) {
+  return axiosInstance.get<IssueDtoPagedResult>(`/projects/${identifier}/issues`, { params: { PageSize: 1, Page: 1 } }).then((res) => res.data);
+}
+
+function fetchVersions(identifier: string) {
+  return axiosInstance.get<VersionDto[]>(`/projects/${identifier}/versions`).then((res) => res.data);
+}
 
 export default function ProjectDetailPage() {
   const { identifier } = useParams<{ identifier: string }>();
@@ -46,8 +46,22 @@ export default function ProjectDetailPage() {
     enabled: !!identifier,
   });
 
+  const issueStatsQuery = useQuery({
+    queryKey: ['issue-stats', identifier],
+    queryFn: () => fetchIssueStats(identifier!),
+    enabled: !!identifier,
+  });
+
+  const versionsQuery = useQuery({
+    queryKey: ['versions', identifier],
+    queryFn: () => fetchVersions(identifier!),
+    enabled: !!identifier,
+  });
+
   const project = projectQuery.data;
   const members = membersQuery.data ?? [];
+  const totalIssues = issueStatsQuery.data?.totalCount ?? 0;
+  const totalVersions = versionsQuery.data?.length ?? 0;
 
   function handleBack() {
     navigate('/projects');
@@ -121,18 +135,39 @@ export default function ProjectDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Tabs (placeholder) */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={false} variant="scrollable" scrollButtons="auto">
-          {tabItems.map((tab) => (
-            <Tab key={tab.value} label={tab.label} disabled />
-          ))}
-        </Tabs>
-      </Box>
-
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        하위 기능은 이후 단계에서 구현됩니다.
-      </Typography>
+      {/* Quick stats / navigation */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Card
+            variant="outlined"
+            sx={{ cursor: 'pointer', '&:hover': { borderColor: 'primary.main' } }}
+            onClick={() => navigate(`/projects/${identifier}/issues`)}
+          >
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <BugReportIcon color="primary" sx={{ fontSize: 40 }} />
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 700 }}>{totalIssues}</Typography>
+                <Typography variant="body2" color="text.secondary">이슈</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Card
+            variant="outlined"
+            sx={{ cursor: 'pointer', '&:hover': { borderColor: 'primary.main' } }}
+            onClick={() => navigate(`/projects/${identifier}/versions`)}
+          >
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <NewReleasesIcon color="secondary" sx={{ fontSize: 40 }} />
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 700 }}>{totalVersions}</Typography>
+                <Typography variant="body2" color="text.secondary">버전</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Members */}
       <Box sx={{ mb: 3 }}>

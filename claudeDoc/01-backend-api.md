@@ -104,4 +104,4 @@ public class IssuesController : ControllerBase
 
 | 날짜 | 오류 내용 | 원인 | 해결책 | 방지 규칙 |
 |------|-----------|------|--------|-----------|
-| - | - | - | - | - |
+| 2026-04-07 | CreatedAtAction "No route matches the supplied values" | ASP.NET Core가 메서드명에서 Async를 자동 제거하여 nameof(XxxAsync) 라우트 매칭 실패. 또한 다른 Route 경로의 액션을 참조할 때 컨트롤러명 미지정 | 1) nameof 대신 문자열 직접 지정 "GetById" 2) 다른 경로의 액션은 컨트롤러명 명시 CreatedAtAction("GetById", "Issues", ...) | CreatedAtAction은 항상 문자열 액션명 사용, Async 접미사 제거. 특수 라우트([HttpGet("/api/...")])에서는 컨트롤러명 반드시 명시 |

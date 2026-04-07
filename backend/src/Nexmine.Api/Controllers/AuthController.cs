@@ -29,7 +29,7 @@ public class AuthController : ControllerBase
 
         SetRefreshTokenCookie(response.RefreshToken);
 
-        return CreatedAtAction(nameof(GetMeAsync), null, response);
+        return CreatedAtAction("GetMe", null, response);
     }
 
     [HttpPost("login")]

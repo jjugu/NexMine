@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Nexmine.Domain.Entities;
 using Nexmine.Infrastructure.Data.Seed;
+using Version = Nexmine.Domain.Entities.Version;
 
 namespace Nexmine.Infrastructure.Data;
 
@@ -13,6 +14,15 @@ public class NexmineDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMembership> ProjectMemberships => Set<ProjectMembership>();
+    public DbSet<Tracker> Trackers => Set<Tracker>();
+    public DbSet<IssueStatus> IssueStatuses => Set<IssueStatus>();
+    public DbSet<IssuePriority> IssuePriorities => Set<IssuePriority>();
+    public DbSet<IssueCategory> IssueCategories => Set<IssueCategory>();
+    public DbSet<Version> Versions => Set<Version>();
+    public DbSet<Issue> Issues => Set<Issue>();
+    public DbSet<Journal> Journals => Set<Journal>();
+    public DbSet<JournalDetail> JournalDetails => Set<JournalDetail>();
+    public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

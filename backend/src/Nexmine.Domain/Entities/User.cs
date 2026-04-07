@@ -13,4 +13,8 @@ public class User : BaseEntity
 
     public List<RefreshToken> RefreshTokens { get; set; } = [];
     public List<ProjectMembership> ProjectMemberships { get; set; } = [];
+    public List<Issue> AuthoredIssues { get; set; } = [];
+    public List<Issue> AssignedIssues { get; set; } = [];
+    public List<Journal> Journals { get; set; } = [];
+    public List<TimeEntry> TimeEntries { get; set; } = [];
 }

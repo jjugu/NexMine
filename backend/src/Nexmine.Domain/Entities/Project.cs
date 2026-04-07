@@ -9,4 +9,8 @@ public class Project : BaseEntity
     public bool IsArchived { get; set; }
 
     public List<ProjectMembership> Members { get; set; } = [];
+    public List<Issue> Issues { get; set; } = [];
+    public List<IssueCategory> Categories { get; set; } = [];
+    public List<Version> Versions { get; set; } = [];
+    public List<TimeEntry> TimeEntries { get; set; } = [];
 }

@@ -33,7 +33,7 @@ public class ProjectMembersController : ControllerBase
     public async Task<IActionResult> AddMemberAsync(string identifier, [FromBody] AddProjectMemberRequest request)
     {
         var member = await _projectMemberService.AddMemberAsync(identifier, request);
-        return CreatedAtAction(nameof(ListMembersAsync), new { identifier }, member);
+        return CreatedAtAction("ListMembers", new { identifier }, member);
     }
 
     [HttpDelete("{membershipId:int}")]
