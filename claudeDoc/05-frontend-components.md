@@ -83,6 +83,64 @@ const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
 
 ---
 
+## 9. 반응형 디자인 규칙
+
+### 지원 해상도
+- **모바일**: 360px ~ 599px
+- **태블릿**: 600px ~ 899px
+- **FHD (16:9)**: 1920x1080
+- **QHD (16:9)**: 2560x1440
+- **UHD (16:9)**: 3840x2160
+- **16:10 비율**: 1920x1200, 2560x1600
+- **MacBook Air 13"**: CSS 1440x900 (Retina 2x, 물리 2560x1600)
+- **MacBook Air 15"**: CSS 1440x932 (Retina 2x, 물리 2880x1864)
+- **MacBook Pro 14"**: CSS 1512x982 (Retina 2x, 물리 3024x1964)
+- **MacBook Pro 16"**: CSS 1728x1117 (Retina 2x, 물리 3456x2234)
+
+> MacBook Retina는 CSS 해상도 기준 1440~1728px 범위. MUI lg(1200) ~ xl(1536) 구간에 걸치므로 이 구간의 레이아웃이 빈 공간 없이 채워지는지 반드시 확인할 것.
+
+### MUI Breakpoints 설정
+```typescript
+// theme.ts
+breakpoints: {
+  values: { xs: 0, sm: 600, md: 900, lg: 1200, xl: 1536 }
+}
+```
+
+### 레이아웃 원칙
+- **빈 공간 최소화**: 콘텐츠가 화면을 충분히 채우도록 `maxWidth`를 제한하되, 초광폭(UHD)에서는 Grid 컬럼을 늘려 공간 활용
+- **Sidebar**: 데스크탑은 고정 240px, 태블릿은 접이식, 모바일은 Drawer
+- **테이블/목록**: 모바일에서는 카드형 레이아웃으로 전환
+- **폼**: 데스크탑 2~3열 Grid, 모바일 1열 풀폭
+- **간트/캘린더**: 모바일에서는 가로 스크롤 허용 + 축소 뷰
+- **칸반**: 모바일에서는 세로 아코디언 또는 가로 스크롤
+
+### 반응형 구현 패턴
+```tsx
+// sx prop에서 breakpoint 사용
+<Box sx={{
+  display: 'grid',
+  gridTemplateColumns: {
+    xs: '1fr',           // 모바일: 1열
+    sm: '1fr 1fr',       // 태블릿: 2열
+    lg: '1fr 1fr 1fr',   // 데스크탑: 3열
+    xl: 'repeat(4, 1fr)' // UHD: 4열
+  },
+  gap: 2,
+  p: { xs: 1, sm: 2, md: 3 }
+}} />
+
+// useMediaQuery로 조건부 렌더링
+const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+```
+
+### 금지 사항
+- `maxWidth: 1200px` 같은 고정 폭 컨테이너 사용 금지 (UHD에서 빈 공간 발생)
+- 모바일에서 가로 스크롤이 불가피한 경우(간트, 캘린더) 외에는 가로 오버플로우 금지
+- `px` 단위 고정 크기 남용 금지 → `%`, `fr`, MUI spacing 단위 우선
+
+---
+
 ## 오류 기록
 
 | 날짜 | 오류 내용 | 원인 | 해결책 | 방지 규칙 |
