@@ -33,6 +33,7 @@ import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import TuneIcon from '@mui/icons-material/Tune';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import HistoryIcon from '@mui/icons-material/History';
 import { useIsFetching } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
@@ -44,6 +45,7 @@ const DRAWER_COLLAPSED_WIDTH = 56;
 const navItems = [
   { label: '대시보드', icon: <DashboardIcon />, path: '/dashboard' },
   { label: '프로젝트', icon: <FolderIcon />, path: '/projects' },
+  { label: '활동', icon: <HistoryIcon />, path: '/activity' },
 ];
 
 const adminNavItems = [
@@ -71,6 +73,7 @@ function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
     { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar` },
     { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki` },
     { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents` },
+    { label: '활동', icon: <HistoryIcon />, path: `/projects/${identifier}/activity` },
     { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions` },
     { label: '설정', icon: <SettingsIcon />, path: `/projects/${identifier}/settings` },
   ];

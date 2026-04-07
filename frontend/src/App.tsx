@@ -43,6 +43,9 @@ const AdminWorkflowsPage = lazy(() => import('./features/admin/components/AdminW
 // Search
 const SearchResultsPage = lazy(() => import('./features/search/components/SearchResultsPage'));
 
+// Activity
+const ActivityPage = lazy(() => import('./features/activity/components/ActivityPage'));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, refetchOnWindowFocus: false },
@@ -122,7 +125,11 @@ function AppContent() {
                 <Route path="/projects/:identifier/wiki/:slug/edit" element={<WikiPageEditor />} />
                 <Route path="/projects/:identifier/documents" element={<DocumentListPage />} />
                 <Route path="/projects/:identifier/documents/:id" element={<DocumentDetailPage />} />
+                <Route path="/projects/:identifier/activity" element={<ActivityPage />} />
                 <Route path="/projects/:identifier/settings" element={<ProjectSettingsPage />} />
+
+                {/* Activity */}
+                <Route path="/activity" element={<ActivityPage />} />
 
                 {/* Search */}
                 <Route path="/search" element={<SearchResultsPage />} />

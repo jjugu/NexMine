@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Nexmine.Application.Features.Activities.Interfaces;
 using Nexmine.Application.Features.Admin.Interfaces;
 using Nexmine.Application.Features.Auth.Interfaces;
 using Nexmine.Application.Features.CustomFields.Interfaces;
@@ -17,6 +18,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, string uploadsPath)
     {
+        services.AddScoped<IActivityService, ActivityService>();
         services.AddScoped<IPasswordHashService, PasswordHashService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
