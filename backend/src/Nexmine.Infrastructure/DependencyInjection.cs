@@ -1,15 +1,17 @@
 using Microsoft.Extensions.DependencyInjection;
 using Nexmine.Application.Features.Auth.Interfaces;
 using Nexmine.Application.Features.Dashboard.Interfaces;
+using Nexmine.Application.Features.Documents.Interfaces;
 using Nexmine.Application.Features.Issues.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
+using Nexmine.Application.Features.Wiki.Interfaces;
 using Nexmine.Infrastructure.Services;
 
 namespace Nexmine.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string uploadsPath)
     {
         services.AddScoped<IPasswordHashService, PasswordHashService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -25,6 +27,10 @@ public static class DependencyInjection
         services.AddScoped<IIssueRelationService, IssueRelationService>();
         services.AddScoped<IGanttService, GanttService>();
         services.AddScoped<ICalendarService, CalendarService>();
+        services.AddScoped<IWikiService, WikiService>();
+        services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<IAttachmentService, AttachmentService>();
+        services.AddSingleton<IFileStorageService>(_ => new FileStorageService(uploadsPath));
 
         return services;
     }

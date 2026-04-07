@@ -17,4 +17,8 @@ public class User : BaseEntity
     public List<Issue> AssignedIssues { get; set; } = [];
     public List<Journal> Journals { get; set; } = [];
     public List<TimeEntry> TimeEntries { get; set; } = [];
+    public List<WikiPage> AuthoredWikiPages { get; set; } = [];
+    public List<WikiPageVersion> WikiPageEdits { get; set; } = [];
+    public List<Attachment> Attachments { get; set; } = [];
+    public List<Document> AuthoredDocuments { get; set; } = [];
 }

@@ -13,4 +13,6 @@ public class Project : BaseEntity
     public List<IssueCategory> Categories { get; set; } = [];
     public List<Version> Versions { get; set; } = [];
     public List<TimeEntry> TimeEntries { get; set; } = [];
+    public List<WikiPage> WikiPages { get; set; } = [];
+    public List<Document> Documents { get; set; } = [];
 }

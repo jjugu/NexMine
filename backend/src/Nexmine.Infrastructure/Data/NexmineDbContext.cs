@@ -24,6 +24,10 @@ public class NexmineDbContext : DbContext
     public DbSet<JournalDetail> JournalDetails => Set<JournalDetail>();
     public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
     public DbSet<IssueRelation> IssueRelations => Set<IssueRelation>();
+    public DbSet<WikiPage> WikiPages => Set<WikiPage>();
+    public DbSet<WikiPageVersion> WikiPageVersions => Set<WikiPageVersion>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<Document> Documents => Set<Document>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

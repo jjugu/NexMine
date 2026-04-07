@@ -42,4 +42,8 @@
 
 | 날짜 | 오류 내용 | 원인 | 해결책 | 방지 규칙 |
 |------|-----------|------|--------|-----------|
-| - | - | - | - | - |
+| 2026-04-07 | 문서 상세 API 404 — 프론트가 `/api/documents/{id}` 호출하지만 백엔드는 `/api/projects/{identifier}/documents/{id}` | 프론트엔드 API 경로가 백엔드 라우트와 불일치 | 프론트 API 경로를 `/projects/{identifier}/documents/{id}`로 수정 | API 호출 경로는 항상 백엔드 컨트롤러 Route 속성과 대조 확인 |
+| 2026-04-07 | 문서 상세에서 파일 업로드 버튼 클릭 시 무반응 | useCallback의 uploadFiles 의존성이 stale closure로 빈 배열 참조 | useCallback 제거하고 일반 async 함수로 변경 | useCallback 내에서 자주 변하는 state를 의존성으로 쓸 때 stale closure 주의, 단순한 경우 useCallback 불필요 |
+| 2026-04-07 | multipart/form-data 업로드 실패 | axios에 `headers: {'Content-Type':'multipart/form-data'}`를 수동 설정하면 boundary 자동 생성이 안됨 | Content-Type 헤더를 제거하고 axios가 FormData에서 자동 설정하도록 위임 | FormData 전송 시 Content-Type을 수동 설정하지 않는다 — axios가 자동 처리 |
+| 2026-04-07 | 파일 업로드 성공(201)인데 UI에 안 보임 | DocumentDto에 attachments 필드 없음 — API 응답에 첨부파일 목록이 포함되지 않음 | DocumentService에서 문서 상세 조회 시 Attachment 목록도 함께 반환하도록 수정 | 첨부파일이 있는 엔티티의 상세 DTO에는 반드시 attachments 목록 포함 |
+| 2026-04-07 | 첨부파일명 표시 안 됨 + NaN MB | 프론트엔드 타입 정의와 백엔드 DTO 필드명 불일치 (프론트 타입이 백엔드 응답 구조와 다름) | 프론트엔드 타입을 백엔드 응답과 일치시키기 | API 응답 DTO 변경 시 프론트엔드 타입도 반드시 동기화 |

@@ -24,6 +24,10 @@ const ProjectSettingsPage = lazy(() => import('./features/projects/components/Pr
 const KanbanBoardPage = lazy(() => import('./features/kanban/components/KanbanBoardPage'));
 const GanttChartPage = lazy(() => import('./features/gantt/components/GanttChartPage'));
 const CalendarPage = lazy(() => import('./features/calendar/components/CalendarPage'));
+const WikiIndexPage = lazy(() => import('./features/wiki/components/WikiIndexPage'));
+const WikiPageEditor = lazy(() => import('./features/wiki/components/WikiPageEditor'));
+const DocumentListPage = lazy(() => import('./features/documents/components/DocumentListPage'));
+const DocumentDetailPage = lazy(() => import('./features/documents/components/DocumentDetailPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -96,6 +100,12 @@ export default function App() {
                   <Route path="/projects/:identifier/kanban" element={<KanbanBoardPage />} />
                   <Route path="/projects/:identifier/gantt" element={<GanttChartPage />} />
                   <Route path="/projects/:identifier/calendar" element={<CalendarPage />} />
+                  <Route path="/projects/:identifier/wiki" element={<WikiIndexPage />} />
+                  <Route path="/projects/:identifier/wiki/new" element={<WikiPageEditor />} />
+                  <Route path="/projects/:identifier/wiki/:slug" element={<WikiIndexPage />} />
+                  <Route path="/projects/:identifier/wiki/:slug/edit" element={<WikiPageEditor />} />
+                  <Route path="/projects/:identifier/documents" element={<DocumentListPage />} />
+                  <Route path="/projects/:identifier/documents/:id" element={<DocumentDetailPage />} />
                   <Route path="/projects/:identifier/settings" element={<ProjectSettingsPage />} />
                 </Route>
               </Route>

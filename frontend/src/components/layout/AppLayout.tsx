@@ -41,8 +41,8 @@ function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
     { label: '칸반', icon: <ViewKanbanIcon />, path: `/projects/${identifier}/kanban` },
     { label: '간트', icon: <BarChartIcon />, path: `/projects/${identifier}/gantt` },
     { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar` },
-    { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki`, isDisabled: true },
-    { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents`, isDisabled: true },
+    { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki` },
+    { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents` },
     { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions` },
     { label: '설정', icon: <SettingsIcon />, path: `/projects/${identifier}/settings` },
   ];
@@ -58,9 +58,10 @@ export default function AppLayout() {
   const params = useParams<{ identifier?: string }>();
   const { user, clearAuth } = useAuthStore();
 
-  // Detect if we are inside a project context
-  const isProjectContext = location.pathname.match(/^\/projects\/[^/]+\/.+/);
-  const projectIdentifier = isProjectContext ? params.identifier ?? location.pathname.split('/')[2] : null;
+  // Detect if we are inside a project context (/projects/{identifier} and deeper)
+  const projectMatch = location.pathname.match(/^\/projects\/([^/]+)/);
+  const isProjectContext = projectMatch && projectMatch[1] !== 'undefined';
+  const projectIdentifier = isProjectContext ? params.identifier ?? projectMatch[1] : null;
   const projectSubNav = projectIdentifier ? getProjectSubNav(projectIdentifier) : [];
 
   function handleMenuOpen(event: React.MouseEvent<HTMLElement>) {
