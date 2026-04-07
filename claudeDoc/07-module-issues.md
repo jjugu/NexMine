@@ -10,9 +10,12 @@
 ```
 
 ## 2. 이슈 상태 전이 규칙
-- 상태 전이에 제한 없음 (Redmine과 동일하게 유연하게)
-- 단, `IsClosed=true` 상태로 변경 시 `DoneRatio=100` 자동 설정
+- **워크플로우(WorkflowTransition)**: 역할+트래커별 허용 상태 전이 매트릭스
+- 워크플로우 규칙이 없는 역할+트래커 조합은 **모든 전이 허용** (기본 동작)
+- Admin 사용자는 워크플로우 제한 없이 모든 전이 허용
+- `IsClosed=true` 상태로 변경 시 `DoneRatio=100` 자동 설정
 - 상태 변경은 Journal로 기록
+- API: `GET /api/issues/{id}/allowed-statuses` → 현재 사용자 역할 기반 허용 상태 반환
 
 ## 3. Journal (변경 이력) 자동 생성
 이슈 업데이트 시 Service에서 변경 전후 값을 비교하여 `Journal` + `JournalDetail` 자동 생성:

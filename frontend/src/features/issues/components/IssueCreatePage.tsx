@@ -8,13 +8,13 @@ import {
   Box, Typography, Button, TextField, Alert,
   CircularProgress, Grid, Breadcrumbs, Link,
   MenuItem, Select, FormControl, InputLabel, Slider,
-  FormControlLabel, Switch, Paper,
+  FormControlLabel, Switch, Paper, Checkbox, Divider,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import axiosInstance from '../../../api/axiosInstance';
-import type { IssueDetailDto, ProjectDto } from '../../../api/generated/model';
+import type { IssueDetailDto, ProjectDto, CustomFieldDto } from '../../../api/generated/model';
 import {
   useTrackers,
   useIssueStatuses,
@@ -48,11 +48,139 @@ function fetchProject(identifier: string) {
     .then((res) => res.data);
 }
 
+function renderCustomFieldInput(
+  cf: CustomFieldDto,
+  value: string,
+  onChange: (val: string) => void,
+) {
+  const label = cf.isRequired ? `${cf.name} *` : (cf.name ?? '');
+  const fieldFormat = cf.fieldFormat ?? 0;
+
+  switch (fieldFormat) {
+    case 0: // String
+      return (
+        <TextField
+          label={label}
+          fullWidth
+          size="small"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={cf.isRequired}
+        />
+      );
+    case 1: // Text
+      return (
+        <TextField
+          label={label}
+          fullWidth
+          size="small"
+          multiline
+          rows={3}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={cf.isRequired}
+        />
+      );
+    case 2: // Int
+      return (
+        <TextField
+          label={label}
+          fullWidth
+          size="small"
+          type="number"
+          slotProps={{ htmlInput: { step: 1 } }}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={cf.isRequired}
+        />
+      );
+    case 3: // Float
+      return (
+        <TextField
+          label={label}
+          fullWidth
+          size="small"
+          type="number"
+          slotProps={{ htmlInput: { step: 0.01 } }}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={cf.isRequired}
+        />
+      );
+    case 4: // Date
+      return (
+        <TextField
+          label={label}
+          fullWidth
+          size="small"
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={cf.isRequired}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+      );
+    case 5: // Bool
+      return (
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={value === 'true'}
+              onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
+            />
+          }
+          label={cf.name ?? ''}
+        />
+      );
+    case 6: // List
+      return (
+        <FormControl fullWidth size="small">
+          <InputLabel>{label}</InputLabel>
+          <Select
+            value={value}
+            label={label}
+            onChange={(e) => onChange(e.target.value)}
+            required={cf.isRequired}
+          >
+            <MenuItem value="">없음</MenuItem>
+            {(cf.possibleValues ?? []).map((pv) => (
+              <MenuItem key={pv} value={pv}>{pv}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      );
+    case 7: // Link
+      return (
+        <TextField
+          label={label}
+          fullWidth
+          size="small"
+          type="url"
+          placeholder="https://"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={cf.isRequired}
+        />
+      );
+    default:
+      return (
+        <TextField
+          label={label}
+          fullWidth
+          size="small"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+  }
+}
+
 export default function IssueCreatePage() {
   const { identifier } = useParams<{ identifier: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [customValues, setCustomValues] = useState<Record<number, string>>({});
 
   const trackersQuery = useTrackers();
   const statusesQuery = useIssueStatuses();
@@ -68,12 +196,23 @@ export default function IssueCreatePage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const customFieldsQuery = useQuery({
+    queryKey: ['custom-fields', identifier],
+    queryFn: () =>
+      axiosInstance
+        .get<CustomFieldDto[]>(`/projects/${identifier}/custom-fields`, { params: { customizable: 'issue' } })
+        .then((r) => r.data),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const trackers = trackersQuery.data ?? [];
   const statuses = statusesQuery.data ?? [];
   const priorities = prioritiesQuery.data ?? [];
   const categories = categoriesQuery.data ?? [];
   const versions = versionsQuery.data ?? [];
   const members = membersQuery.data ?? [];
+  const customFields = customFieldsQuery.data ?? [];
 
   const defaultTrackerId = trackers.find((t) => t.isDefault)?.id ?? trackers[0]?.id ?? 0;
   const defaultStatusId = statuses[0]?.id ?? null;
@@ -105,6 +244,9 @@ export default function IssueCreatePage() {
 
   const createMutation = useMutation({
     mutationFn: (data: CreateIssueFormData) => {
+      const customValuesPayload = Object.entries(customValues)
+        .filter(([, v]) => v !== '')
+        .map(([fieldId, value]) => ({ customFieldId: Number(fieldId), value }));
       const payload = {
         ...data,
         statusId: data.statusId || undefined,
@@ -116,6 +258,7 @@ export default function IssueCreatePage() {
         dueDate: data.dueDate || undefined,
         estimatedHours: data.estimatedHours || undefined,
         doneRatio: data.doneRatio ?? 0,
+        customValues: customValuesPayload.length > 0 ? customValuesPayload : undefined,
       };
       return axiosInstance
         .post<IssueDetailDto>(`/projects/${identifier}/issues`, payload)
@@ -441,6 +584,23 @@ export default function IssueCreatePage() {
               />
             </Grid>
           </Grid>
+
+          {/* Custom Fields */}
+          {customFields.length > 0 && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>커스텀 필드</Typography>
+              <Grid container spacing={2}>
+                {customFields.map((cf) => (
+                  <Grid key={cf.id} size={{ xs: 12, sm: 6 }}>
+                    {renderCustomFieldInput(cf, customValues[cf.id ?? 0] ?? '', (val) =>
+                      setCustomValues((prev) => ({ ...prev, [cf.id ?? 0]: val }))
+                    )}
+                  </Grid>
+                ))}
+              </Grid>
+            </>
+          )}
 
           {/* Actions */}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 3 }}>

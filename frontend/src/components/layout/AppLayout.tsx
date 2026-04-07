@@ -30,6 +30,8 @@ import SecurityIcon from '@mui/icons-material/Security';
 import LabelIcon from '@mui/icons-material/Label';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
+import TuneIcon from '@mui/icons-material/Tune';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { useIsFetching } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
@@ -50,6 +52,8 @@ const adminNavItems = [
   { label: '트래커', icon: <LabelIcon />, path: '/admin/trackers' },
   { label: '상태', icon: <PlaylistAddCheckIcon />, path: '/admin/statuses' },
   { label: '우선순위', icon: <PriorityHighIcon />, path: '/admin/priorities' },
+  { label: '커스텀 필드', icon: <TuneIcon />, path: '/admin/custom-fields' },
+  { label: '워크플로우', icon: <AccountTreeIcon />, path: '/admin/workflows' },
 ];
 
 interface ProjectSubNavItem {

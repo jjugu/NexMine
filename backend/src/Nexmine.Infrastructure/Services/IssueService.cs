@@ -1,8 +1,11 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Nexmine.Application.Common.Models;
+using Nexmine.Application.Features.CustomFields.Dtos;
+using Nexmine.Application.Features.CustomFields.Interfaces;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
+using Nexmine.Application.Features.Workflows.Interfaces;
 using Nexmine.Domain.Entities;
 using Nexmine.Infrastructure.Data;
 
@@ -12,6 +15,8 @@ public class IssueService : IIssueService
 {
     private readonly NexmineDbContext _dbContext;
     private readonly IMapper _mapper;
+    private readonly ICustomFieldService _customFieldService;
+    private readonly IWorkflowService _workflowService;
 
     private static readonly string[] TrackedFields =
     [
@@ -30,10 +35,12 @@ public class IssueService : IIssueService
         nameof(Issue.IsPrivate)
     ];
 
-    public IssueService(NexmineDbContext dbContext, IMapper mapper)
+    public IssueService(NexmineDbContext dbContext, IMapper mapper, ICustomFieldService customFieldService, IWorkflowService workflowService)
     {
         _dbContext = dbContext;
         _mapper = mapper;
+        _customFieldService = customFieldService;
+        _workflowService = workflowService;
     }
 
     public async Task<PagedResult<IssueDto>> ListAsync(string projectIdentifier, IssueFilterParams filterParams)
@@ -144,7 +151,9 @@ public class IssueService : IIssueService
         if (issue is null)
             return null;
 
-        return MapToDetailDto(issue);
+        var dto = MapToDetailDto(issue);
+        dto.CustomValues = await _customFieldService.GetValuesAsync("issue", issue.Id);
+        return dto;
     }
 
     public async Task<IssueDetailDto> CreateAsync(string projectIdentifier, CreateIssueRequest request, int userId)
@@ -215,6 +224,12 @@ public class IssueService : IIssueService
         _dbContext.Issues.Add(issue);
         await _dbContext.SaveChangesAsync();
 
+        // Save custom values
+        if (request.CustomValues is { Count: > 0 })
+        {
+            await _customFieldService.SetValuesAsync("issue", issue.Id, request.CustomValues);
+        }
+
         // Reload with navigation properties
         var created = await _dbContext.Issues
             .Include(i => i.Tracker)
@@ -227,7 +242,9 @@ public class IssueService : IIssueService
             .Include(i => i.ParentIssue)
             .FirstAsync(i => i.Id == issue.Id);
 
-        return MapToDetailDto(created);
+        var createdDto = MapToDetailDto(created);
+        createdDto.CustomValues = await _customFieldService.GetValuesAsync("issue", created.Id);
+        return createdDto;
     }
 
     public async Task<IssueDetailDto?> UpdateAsync(int id, UpdateIssueRequest request, int userId)
@@ -238,6 +255,28 @@ public class IssueService : IIssueService
 
         if (issue is null)
             return null;
+
+        // Validate workflow transition if status is being changed
+        if (request.StatusId.HasValue && request.StatusId.Value != issue.StatusId)
+        {
+            var user = await _dbContext.Users.FindAsync(userId);
+            if (user is not null && !user.IsAdmin)
+            {
+                var membership = await _dbContext.ProjectMemberships
+                    .FirstOrDefaultAsync(pm => pm.ProjectId == issue.ProjectId && pm.UserId == userId);
+
+                if (membership is not null)
+                {
+                    var canTransition = await _workflowService.CanTransitionAsync(
+                        membership.RoleId, issue.TrackerId, issue.StatusId, request.StatusId.Value);
+
+                    if (!canTransition)
+                    {
+                        throw new InvalidOperationException("해당 상태로의 전환이 허용되지 않습니다.");
+                    }
+                }
+            }
+        }
 
         // Capture old values for journal
         var oldValues = new Dictionary<string, string?>
@@ -359,6 +398,12 @@ public class IssueService : IIssueService
 
         await _dbContext.SaveChangesAsync();
 
+        // Save custom values
+        if (request.CustomValues is { Count: > 0 })
+        {
+            await _customFieldService.SetValuesAsync("issue", issue.Id, request.CustomValues);
+        }
+
         // Reload with navigation properties
         var updated = await _dbContext.Issues
             .Include(i => i.Tracker)
@@ -371,7 +416,9 @@ public class IssueService : IIssueService
             .Include(i => i.ParentIssue)
             .FirstAsync(i => i.Id == issue.Id);
 
-        return MapToDetailDto(updated);
+        var updatedDto = MapToDetailDto(updated);
+        updatedDto.CustomValues = await _customFieldService.GetValuesAsync("issue", updated.Id);
+        return updatedDto;
     }
 
     public async Task<bool> DeleteAsync(int id)
@@ -399,6 +446,25 @@ public class IssueService : IIssueService
         // If StatusId is provided and different from current → change status
         if (request.StatusId.HasValue && request.StatusId.Value != issue.StatusId)
         {
+            // Validate workflow transition
+            var user = await _dbContext.Users.FindAsync(userId);
+            if (user is not null && !user.IsAdmin)
+            {
+                var membership = await _dbContext.ProjectMemberships
+                    .FirstOrDefaultAsync(pm => pm.ProjectId == issue.ProjectId && pm.UserId == userId);
+
+                if (membership is not null)
+                {
+                    var canTransition = await _workflowService.CanTransitionAsync(
+                        membership.RoleId, issue.TrackerId, issue.StatusId, request.StatusId.Value);
+
+                    if (!canTransition)
+                    {
+                        throw new InvalidOperationException("해당 상태로의 전환이 허용되지 않습니다.");
+                    }
+                }
+            }
+
             var newStatus = await _dbContext.IssueStatuses.FindAsync(request.StatusId.Value)
                 ?? throw new KeyNotFoundException("상태를 찾을 수 없습니다.");
 
@@ -459,7 +525,9 @@ public class IssueService : IIssueService
             .Include(i => i.ParentIssue)
             .FirstAsync(i => i.Id == issue.Id);
 
-        return MapToDetailDto(updated);
+        var positionDto = MapToDetailDto(updated);
+        positionDto.CustomValues = await _customFieldService.GetValuesAsync("issue", updated.Id);
+        return positionDto;
     }
 
     private static IssueDetailDto MapToDetailDto(Issue issue)

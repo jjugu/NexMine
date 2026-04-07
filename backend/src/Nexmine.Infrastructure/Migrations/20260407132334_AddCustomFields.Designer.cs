@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nexmine.Infrastructure.Data;
 
@@ -10,9 +11,11 @@ using Nexmine.Infrastructure.Data;
 namespace Nexmine.Infrastructure.Migrations
 {
     [DbContext(typeof(NexmineDbContext))]
-    partial class NexmineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260407132334_AddCustomFields")]
+    partial class AddCustomFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.14");
@@ -1113,33 +1116,6 @@ namespace Nexmine.Infrastructure.Migrations
                     b.ToTable("WikiPageVersions");
                 });
 
-            modelBuilder.Entity("Nexmine.Domain.Entities.WorkflowTransition", b =>
-                {
-                    b.Property<int>("RoleId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("TrackerId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("OldStatusId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("NewStatusId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("RoleId", "TrackerId", "OldStatusId", "NewStatusId");
-
-                    b.HasIndex("NewStatusId");
-
-                    b.HasIndex("OldStatusId");
-
-                    b.HasIndex("TrackerId");
-
-                    b.HasIndex("RoleId", "TrackerId");
-
-                    b.ToTable("WorkflowTransitions");
-                });
-
             modelBuilder.Entity("Nexmine.Domain.Entities.Attachment", b =>
                 {
                     b.HasOne("Nexmine.Domain.Entities.User", "Author")
@@ -1468,41 +1444,6 @@ namespace Nexmine.Infrastructure.Migrations
                     b.Navigation("EditedBy");
 
                     b.Navigation("WikiPage");
-                });
-
-            modelBuilder.Entity("Nexmine.Domain.Entities.WorkflowTransition", b =>
-                {
-                    b.HasOne("Nexmine.Domain.Entities.IssueStatus", "NewStatus")
-                        .WithMany()
-                        .HasForeignKey("NewStatusId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Nexmine.Domain.Entities.IssueStatus", "OldStatus")
-                        .WithMany()
-                        .HasForeignKey("OldStatusId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Nexmine.Domain.Entities.Role", "Role")
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Nexmine.Domain.Entities.Tracker", "Tracker")
-                        .WithMany()
-                        .HasForeignKey("TrackerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("NewStatus");
-
-                    b.Navigation("OldStatus");
-
-                    b.Navigation("Role");
-
-                    b.Navigation("Tracker");
                 });
 
             modelBuilder.Entity("Nexmine.Domain.Entities.CustomField", b =>

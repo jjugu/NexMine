@@ -1,3 +1,5 @@
+using Nexmine.Application.Features.CustomFields.Dtos;
+
 namespace Nexmine.Application.Features.Issues.Dtos;
 
 public class IssueDetailDto
@@ -30,4 +32,5 @@ public class IssueDetailDto
     public int Position { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public List<CustomValueDto> CustomValues { get; set; } = [];
 }

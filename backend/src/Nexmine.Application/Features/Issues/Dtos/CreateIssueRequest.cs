@@ -1,3 +1,5 @@
+using Nexmine.Application.Features.CustomFields.Dtos;
+
 namespace Nexmine.Application.Features.Issues.Dtos;
 
 public class CreateIssueRequest
@@ -16,4 +18,5 @@ public class CreateIssueRequest
     public decimal? EstimatedHours { get; set; }
     public int? DoneRatio { get; set; }
     public bool IsPrivate { get; set; }
+    public List<CustomValueItem>? CustomValues { get; set; }
 }

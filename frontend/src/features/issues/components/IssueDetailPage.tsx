@@ -9,7 +9,7 @@ import {
   CircularProgress, Skeleton, Breadcrumbs, Link, Paper, Divider,
   MenuItem, Select, FormControl, InputLabel, Slider,
   FormControlLabel, Switch, Avatar, IconButton, LinearProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -19,7 +19,8 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import axiosInstance from '../../../api/axiosInstance';
 import type {
-  IssueDetailDto, ProjectDto, JournalDto, TimeEntryDto,
+  IssueDetailDto, ProjectDto, JournalDto, TimeEntryDto, CustomFieldDto,
+  AllowedStatusDto,
 } from '../../../api/generated/model';
 import {
   useTrackers, useIssueStatuses, useIssuePriorities,
@@ -68,6 +69,68 @@ function fetchTimeEntries(issueId: number) {
     // API returns paginated { items, totalCount } or plain array
     return Array.isArray(data) ? data as TimeEntryDto[] : (data.items ?? []) as TimeEntryDto[];
   });
+}
+
+// ---------- custom field helpers ----------
+const FIELD_FORMAT_LABELS: Record<number, string> = {
+  0: '텍스트', 1: '장문 텍스트', 2: '정수', 3: '실수',
+  4: '날짜', 5: '불린', 6: '목록', 7: '링크',
+};
+
+function renderCustomFieldInput(
+  cf: CustomFieldDto,
+  value: string,
+  onChange: (val: string) => void,
+) {
+  const label = cf.isRequired ? `${cf.name} *` : (cf.name ?? '');
+  const fieldFormat = cf.fieldFormat ?? 0;
+
+  switch (fieldFormat) {
+    case 0: // String
+      return <TextField label={label} fullWidth size="small" value={value} onChange={(e) => onChange(e.target.value)} required={cf.isRequired} />;
+    case 1: // Text
+      return <TextField label={label} fullWidth size="small" multiline rows={3} value={value} onChange={(e) => onChange(e.target.value)} required={cf.isRequired} />;
+    case 2: // Int
+      return <TextField label={label} fullWidth size="small" type="number" slotProps={{ htmlInput: { step: 1 } }} value={value} onChange={(e) => onChange(e.target.value)} required={cf.isRequired} />;
+    case 3: // Float
+      return <TextField label={label} fullWidth size="small" type="number" slotProps={{ htmlInput: { step: 0.01 } }} value={value} onChange={(e) => onChange(e.target.value)} required={cf.isRequired} />;
+    case 4: // Date
+      return <TextField label={label} fullWidth size="small" type="date" value={value} onChange={(e) => onChange(e.target.value)} required={cf.isRequired} slotProps={{ inputLabel: { shrink: true } }} />;
+    case 5: // Bool
+      return <FormControlLabel control={<Checkbox checked={value === 'true'} onChange={(e) => onChange(e.target.checked ? 'true' : 'false')} />} label={cf.name ?? ''} />;
+    case 6: // List
+      return (
+        <FormControl fullWidth size="small">
+          <InputLabel>{label}</InputLabel>
+          <Select value={value} label={label} onChange={(e) => onChange(e.target.value)} required={cf.isRequired}>
+            <MenuItem value="">없음</MenuItem>
+            {(cf.possibleValues ?? []).map((pv) => (<MenuItem key={pv} value={pv}>{pv}</MenuItem>))}
+          </Select>
+        </FormControl>
+      );
+    case 7: // Link
+      return <TextField label={label} fullWidth size="small" type="url" placeholder="https://" value={value} onChange={(e) => onChange(e.target.value)} required={cf.isRequired} />;
+    default:
+      return <TextField label={label} fullWidth size="small" value={value} onChange={(e) => onChange(e.target.value)} />;
+  }
+}
+
+function formatCustomValue(value: string | null | undefined, fieldFormat: number): React.ReactNode {
+  if (!value) return '-';
+  switch (fieldFormat) {
+    case 5: // Bool
+      return value === 'true' ? '예' : '아니오';
+    case 4: // Date
+      return formatDate(value);
+    case 7: // Link
+      return (
+        <Link href={value} target="_blank" rel="noopener noreferrer" underline="hover">
+          {value}
+        </Link>
+      );
+    default:
+      return value;
+  }
 }
 
 // ---------- sub-components ----------
@@ -437,6 +500,7 @@ export default function IssueDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [editCustomValues, setEditCustomValues] = useState<Record<number, string>>({});
 
   // Reference data
   const trackersQuery = useTrackers();
@@ -453,6 +517,18 @@ export default function IssueDetailPage() {
   const versions = versionsQuery.data ?? [];
   const members = membersQuery.data ?? [];
 
+  // Allowed statuses for workflow-based status dropdown
+  const allowedStatusesQuery = useQuery({
+    queryKey: ['allowed-statuses', issueId],
+    queryFn: () =>
+      axiosInstance.get<AllowedStatusDto[]>(`/issues/${issueId}/allowed-statuses`).then((r) => r.data),
+    enabled: !!issueId,
+  });
+  // Use allowed statuses if available (non-empty), otherwise fall back to all statuses
+  const editableStatuses = allowedStatusesQuery.data && allowedStatusesQuery.data.length > 0
+    ? allowedStatusesQuery.data.map((s) => ({ id: s.id!, name: s.name ?? '' }))
+    : statuses;
+
   // Issue data
   const issueQuery = useQuery({
     queryKey: ['issue', issueId],
@@ -466,6 +542,18 @@ export default function IssueDetailPage() {
     enabled: !!identifier,
     staleTime: 5 * 60 * 1000,
   });
+
+  const customFieldsQuery = useQuery({
+    queryKey: ['custom-fields', identifier],
+    queryFn: () =>
+      axiosInstance
+        .get<CustomFieldDto[]>(`/projects/${identifier}/custom-fields`, { params: { customizable: 'issue' } })
+        .then((r) => r.data),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const customFields = customFieldsQuery.data ?? [];
 
   const issue = issueQuery.data;
 
@@ -499,6 +587,9 @@ export default function IssueDetailPage() {
 
   const updateMutation = useMutation({
     mutationFn: (data: UpdateIssueFormData) => {
+      const customValuesPayload = Object.entries(editCustomValues)
+        .filter(([, v]) => v !== '')
+        .map(([fieldId, value]) => ({ customFieldId: Number(fieldId), value }));
       const payload = {
         ...data,
         assignedToId: data.assignedToId || null,
@@ -507,6 +598,7 @@ export default function IssueDetailPage() {
         startDate: data.startDate || null,
         dueDate: data.dueDate || null,
         estimatedHours: data.estimatedHours || null,
+        customValues: customValuesPayload.length > 0 ? customValuesPayload : undefined,
       };
       return axiosInstance.put(`/Issues/${issueId}`, payload).then((r) => r.data);
     },
@@ -536,6 +628,16 @@ export default function IssueDetailPage() {
   });
 
   function handleEdit() {
+    // Initialize custom field values from current issue data
+    const cvMap: Record<number, string> = {};
+    if (issue?.customValues) {
+      for (const cv of issue.customValues) {
+        if (cv.customFieldId != null) {
+          cvMap[cv.customFieldId] = cv.value ?? '';
+        }
+      }
+    }
+    setEditCustomValues(cvMap);
     setIsEditing(true);
     setServerError(null);
   }
@@ -706,7 +808,7 @@ export default function IssueDetailPage() {
                         label="상태"
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                       >
-                        {statuses.map((s) => (
+                        {editableStatuses.map((s) => (
                           <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
                         ))}
                       </Select>
@@ -884,6 +986,24 @@ export default function IssueDetailPage() {
                 />
               </Grid>
             </Grid>
+
+            {/* Custom Fields in edit mode */}
+            {customFields.length > 0 && (
+              <>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>커스텀 필드</Typography>
+                <Grid container spacing={2}>
+                  {customFields.map((cf) => (
+                    <Grid key={cf.id} size={{ xs: 12, sm: 6 }}>
+                      {renderCustomFieldInput(cf, editCustomValues[cf.id ?? 0] ?? '', (val) =>
+                        setEditCustomValues((prev) => ({ ...prev, [cf.id ?? 0]: val }))
+                      )}
+                    </Grid>
+                  ))}
+                </Grid>
+              </>
+            )}
+
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 3 }}>
               <Button onClick={handleCancelEdit}>취소</Button>
               <Button
@@ -984,6 +1104,29 @@ export default function IssueDetailPage() {
               <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                 {issue.description}
               </Typography>
+            </Paper>
+          )}
+
+          {/* Custom Fields (read-only) */}
+          {issue.customValues && issue.customValues.length > 0 && (
+            <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2, md: 3 }, mb: 3 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>커스텀 필드</Typography>
+              <Grid container spacing={2}>
+                {issue.customValues.map((cv) => {
+                  const cfDef = customFields.find((cf) => cf.id === cv.customFieldId);
+                  const fieldFormat = cfDef?.fieldFormat ?? 0;
+                  return (
+                    <Grid key={cv.customFieldId} size={{ xs: 6, sm: 4, md: 3 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        {cv.customFieldName ?? FIELD_FORMAT_LABELS[fieldFormat] ?? ''}
+                      </Typography>
+                      <Typography variant="body2" component="div">
+                        {formatCustomValue(cv.value, fieldFormat)}
+                      </Typography>
+                    </Grid>
+                  );
+                })}
+              </Grid>
             </Paper>
           )}
         </>

@@ -28,6 +28,11 @@ public class NexmineDbContext : DbContext
     public DbSet<WikiPageVersion> WikiPageVersions => Set<WikiPageVersion>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<CustomField> CustomFields => Set<CustomField>();
+    public DbSet<CustomValue> CustomValues => Set<CustomValue>();
+    public DbSet<CustomFieldProject> CustomFieldProjects => Set<CustomFieldProject>();
+    public DbSet<CustomFieldTracker> CustomFieldTrackers => Set<CustomFieldTracker>();
+    public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

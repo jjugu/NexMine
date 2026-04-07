@@ -1,12 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Nexmine.Application.Features.Admin.Interfaces;
 using Nexmine.Application.Features.Auth.Interfaces;
+using Nexmine.Application.Features.CustomFields.Interfaces;
 using Nexmine.Application.Features.Dashboard.Interfaces;
 using Nexmine.Application.Features.Documents.Interfaces;
 using Nexmine.Application.Features.Issues.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
 using Nexmine.Application.Features.Search.Interfaces;
 using Nexmine.Application.Features.Wiki.Interfaces;
+using Nexmine.Application.Features.Workflows.Interfaces;
 using Nexmine.Infrastructure.Services;
 
 namespace Nexmine.Infrastructure;
@@ -41,8 +43,14 @@ public static class DependencyInjection
         services.AddScoped<IAdminStatusService, AdminStatusService>();
         services.AddScoped<IAdminPriorityService, AdminPriorityService>();
 
+        // Custom fields
+        services.AddScoped<ICustomFieldService, CustomFieldService>();
+
         // Search service
         services.AddScoped<ISearchService, SearchService>();
+
+        // Workflow service
+        services.AddScoped<IWorkflowService, WorkflowService>();
 
         return services;
     }

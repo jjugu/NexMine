@@ -37,6 +37,8 @@ const AdminRolesPage = lazy(() => import('./features/admin/components/AdminRoles
 const AdminTrackersPage = lazy(() => import('./features/admin/components/AdminTrackersPage'));
 const AdminStatusesPage = lazy(() => import('./features/admin/components/AdminStatusesPage'));
 const AdminPrioritiesPage = lazy(() => import('./features/admin/components/AdminPrioritiesPage'));
+const AdminCustomFieldsPage = lazy(() => import('./features/admin/components/AdminCustomFieldsPage'));
+const AdminWorkflowsPage = lazy(() => import('./features/admin/components/AdminWorkflowsPage'));
 
 // Search
 const SearchResultsPage = lazy(() => import('./features/search/components/SearchResultsPage'));
@@ -132,6 +134,8 @@ function AppContent() {
                   <Route path="/admin/trackers" element={<AdminTrackersPage />} />
                   <Route path="/admin/statuses" element={<AdminStatusesPage />} />
                   <Route path="/admin/priorities" element={<AdminPrioritiesPage />} />
+                  <Route path="/admin/custom-fields" element={<AdminCustomFieldsPage />} />
+                  <Route path="/admin/workflows" element={<AdminWorkflowsPage />} />
                 </Route>
               </Route>
             </Route>
