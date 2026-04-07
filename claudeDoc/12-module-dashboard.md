@@ -53,4 +53,4 @@
 
 | 날짜 | 오류 내용 | 원인 | 해결책 | 방지 규칙 |
 |------|-----------|------|--------|-----------|
-| - | - | - | - | - |
+| 2026-04-07 | recharts PieLabel 타입 불일치 — `Record<string, unknown>` 을 `PieLabelRenderProps`에 할당 불가 | recharts의 PieLabel 타입이 엄격하여 커스텀 라벨 함수의 props 타입이 불일치 | `PieLabelRenderProps`를 import하여 사용하거나 `label` prop에 타입 단언 사용 | recharts 커스텀 라벨 사용 시 반드시 recharts 제공 타입을 import하여 사용 |

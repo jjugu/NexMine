@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Nexmine.Application.Features.Auth.Interfaces;
+using Nexmine.Application.Features.Dashboard.Interfaces;
 using Nexmine.Application.Features.Issues.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
 using Nexmine.Infrastructure.Services;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<ITimeEntryService, TimeEntryService>();
         services.AddScoped<IVersionService, VersionService>();
         services.AddScoped<IIssueCategoryService, IssueCategoryService>();
+        services.AddScoped<IDashboardService, DashboardService>();
 
         return services;
     }

@@ -10,4 +10,5 @@ public interface IIssueService
     Task<IssueDetailDto> CreateAsync(string projectIdentifier, CreateIssueRequest request, int userId);
     Task<IssueDetailDto?> UpdateAsync(int id, UpdateIssueRequest request, int userId);
     Task<bool> DeleteAsync(int id);
+    Task<IssueDetailDto?> UpdatePositionAsync(int id, UpdateIssuePositionRequest request, int userId);
 }

@@ -1,91 +1,150 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Box, Typography, Grid, Card, CardContent, CardActionArea,
-  Skeleton, Alert, Chip,
+  Box, Typography, Grid, Card, CardContent,
+  Skeleton, Alert, Chip, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, Paper,
+  useMediaQuery, useTheme, CardActionArea,
 } from '@mui/material';
-import FolderIcon from '@mui/icons-material/Folder';
 import BugReportIcon from '@mui/icons-material/BugReport';
-import PeopleIcon from '@mui/icons-material/People';
-import PublicIcon from '@mui/icons-material/Public';
-import LockIcon from '@mui/icons-material/Lock';
-import ScheduleIcon from '@mui/icons-material/Schedule';
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
+  Tooltip, ResponsiveContainer, Legend,
+} from 'recharts';
 import axiosInstance from '../../../api/axiosInstance';
-import type {
-  ProjectDtoPagedResult,
-  ProjectDto,
-  ProjectMemberDto,
-  IssueDtoPagedResult,
-} from '../../../api/generated/model';
 
-interface ProjectStats {
-  project: ProjectDto;
-  issueCount: number;
-  memberCount: number;
+// --- Types for dashboard API response ---
+interface DashboardIssue {
+  id: number;
+  subject: string;
+  projectName: string;
+  projectIdentifier: string;
+  statusName: string;
+  priorityName: string;
+  assignedToName?: string | null;
+  dueDate?: string | null;
+  doneRatio: number;
+  updatedAt: string;
 }
 
-function fetchProjects() {
-  return axiosInstance
-    .get<ProjectDtoPagedResult>('/Projects', { params: { page: 1, pageSize: 50 } })
-    .then((r) => r.data);
+interface StatusCount {
+  statusName: string;
+  count: number;
+  isClosed: boolean;
 }
 
-function fetchProjectIssueCount(identifier: string) {
-  return axiosInstance
-    .get<IssueDtoPagedResult>(`/projects/${identifier}/issues`, {
-      params: { Page: 1, PageSize: 1 },
-    })
-    .then((r) => r.data.totalCount ?? 0);
+interface PriorityCount {
+  priorityName: string;
+  count: number;
 }
 
-function fetchProjectMemberCount(identifier: string) {
-  return axiosInstance
-    .get<ProjectMemberDto[]>(`/projects/${identifier}/members`)
-    .then((r) => r.data.length);
+interface DashboardData {
+  myIssues: DashboardIssue[];
+  overdueIssues: DashboardIssue[];
+  issuesByStatus: StatusCount[];
+  issuesByPriority: PriorityCount[];
+  totalIssueCount: number;
 }
 
-function formatDate(dateStr?: string) {
+// --- Chart color maps ---
+const STATUS_COLORS: Record<string, string> = {
+  New: '#1976d2',
+  '신규': '#1976d2',
+  InProgress: '#ed6c02',
+  '진행중': '#ed6c02',
+  Resolved: '#2e7d32',
+  '해결': '#2e7d32',
+  Feedback: '#9c27b0',
+  '피드백': '#9c27b0',
+  Closed: '#9e9e9e',
+  '닫힘': '#9e9e9e',
+  '완료': '#9e9e9e',
+};
+
+const PRIORITY_COLORS: Record<string, string> = {
+  Immediate: '#d32f2f',
+  '긴급': '#d32f2f',
+  Urgent: '#ed6c02',
+  '매우높음': '#ed6c02',
+  High: '#ffa000',
+  '높음': '#ffa000',
+  Normal: '#1976d2',
+  '보통': '#1976d2',
+  Low: '#9e9e9e',
+  '낮음': '#9e9e9e',
+};
+
+const DEFAULT_STATUS_COLORS = ['#1976d2', '#ed6c02', '#2e7d32', '#9c27b0', '#9e9e9e', '#00bcd4', '#ff5722'];
+const DEFAULT_PRIORITY_COLORS = ['#d32f2f', '#ed6c02', '#ffa000', '#1976d2', '#9e9e9e'];
+
+function getStatusColor(name: string, index: number): string {
+  return STATUS_COLORS[name] ?? DEFAULT_STATUS_COLORS[index % DEFAULT_STATUS_COLORS.length];
+}
+
+function getPriorityBarColor(name: string, index: number): string {
+  return PRIORITY_COLORS[name] ?? DEFAULT_PRIORITY_COLORS[index % DEFAULT_PRIORITY_COLORS.length];
+}
+
+function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-');
+    return `${y}. ${m}. ${d}.`;
+  }
+  const s = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+  return new Date(s).toLocaleDateString('ko-KR', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
   });
 }
 
+function getPriorityChipColor(name?: string): 'error' | 'warning' | 'info' | 'default' {
+  if (!name) return 'default';
+  const n = name.toLowerCase();
+  if (n === 'immediate' || n === '긴급' || n === 'urgent' || n === '매우높음') return 'error';
+  if (n === 'high' || n === '높음') return 'warning';
+  if (n === 'normal' || n === '보통') return 'info';
+  return 'default';
+}
+
+// --- Skeleton widget ---
+function WidgetSkeleton({ height = 200 }: { height?: number }) {
+  return (
+    <Card variant="outlined" sx={{ height: '100%' }}>
+      <CardContent>
+        <Skeleton width="40%" height={28} sx={{ mb: 1 }} />
+        <Skeleton variant="rectangular" height={height} sx={{ borderRadius: 1 }} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Main component ---
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const projectsQuery = useQuery({
-    queryKey: ['dashboard-projects'],
-    queryFn: fetchProjects,
+  const dashboardQuery = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: () =>
+      axiosInstance.get<DashboardData>('/dashboard').then((r) => r.data),
+    refetchInterval: 60000,
   });
 
-  const projects = projectsQuery.data?.items ?? [];
+  const data = dashboardQuery.data;
+  const isLoading = dashboardQuery.isLoading;
+  const isError = dashboardQuery.isError;
 
-  // Fetch stats for each project
-  const statsQuery = useQuery({
-    queryKey: ['dashboard-stats', projects.map((p) => p.identifier)],
-    queryFn: async (): Promise<ProjectStats[]> => {
-      const results = await Promise.all(
-        projects.map(async (project) => {
-          const identifier = project.identifier!;
-          const [issueCount, memberCount] = await Promise.all([
-            fetchProjectIssueCount(identifier).catch(() => 0),
-            fetchProjectMemberCount(identifier).catch(() => 0),
-          ]);
-          return { project, issueCount, memberCount };
-        }),
-      );
-      return results;
-    },
-    enabled: projects.length > 0,
-  });
-
-  const projectStats = statsQuery.data ?? [];
-
-  const isLoading = projectsQuery.isLoading;
-  const isError = projectsQuery.isError;
+  const totalIssues = data?.totalIssueCount ?? 0;
+  const myIssueCount = data?.myIssues?.length ?? 0;
+  const overdueCount = data?.overdueIssues?.length ?? 0;
+  const closedCount = data?.issuesByStatus
+    ?.filter((s) => s.isClosed)
+    .reduce((sum, s) => sum + s.count, 0) ?? 0;
+  const completionRate = totalIssues > 0 ? Math.round((closedCount / totalIssues) * 100) : 0;
 
   return (
     <Box>
@@ -93,153 +152,407 @@ export default function DashboardPage() {
 
       {isError && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          데이터를 불러오는데 실패했습니다.
+          대시보드 데이터를 불러오는데 실패했습니다.
         </Alert>
       )}
 
-      {/* Summary row */}
+      {/* Row 1: Summary stat cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <Card variant="outlined">
+        {/* Total issues */}
+        <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+          <Card variant="outlined" sx={{ height: '100%' }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <FolderIcon color="primary" sx={{ fontSize: 40 }} />
+              <BugReportIcon color="primary" sx={{ fontSize: 40 }} />
               <Box>
                 <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                  {isLoading ? <Skeleton width={40} /> : projects.length}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">전체 프로젝트</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <Card variant="outlined">
-            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <BugReportIcon color="secondary" sx={{ fontSize: 40 }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                  {statsQuery.isLoading || isLoading ? (
-                    <Skeleton width={40} />
-                  ) : (
-                    projectStats.reduce((sum, s) => sum + s.issueCount, 0)
-                  )}
+                  {isLoading ? <Skeleton width={40} /> : totalIssues}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">전체 이슈</Typography>
               </Box>
             </CardContent>
           </Card>
         </Grid>
+
+        {/* My issues */}
+        <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+          <Card variant="outlined" sx={{ height: '100%' }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <AssignmentIndIcon color="secondary" sx={{ fontSize: 40 }} />
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                  {isLoading ? <Skeleton width={40} /> : myIssueCount}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">내 이슈</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Overdue */}
+        <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+          <Card variant="outlined" sx={{ height: '100%' }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <WarningAmberIcon sx={{ fontSize: 40, color: overdueCount > 0 ? 'error.main' : 'text.disabled' }} />
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: overdueCount > 0 ? 'error.main' : undefined }}>
+                  {isLoading ? <Skeleton width={40} /> : overdueCount}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">기한 초과</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Completion rate */}
+        <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+          <Card variant="outlined" sx={{ height: '100%' }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <CheckCircleIcon sx={{ fontSize: 40, color: 'success.main' }} />
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                  {isLoading ? <Skeleton width={40} /> : `${completionRate}%`}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">완료율</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
-      {/* Project Cards */}
-      <Typography variant="h6" sx={{ mb: 2 }}>프로젝트 목록</Typography>
-
-      {isLoading && (
-        <Grid container spacing={2}>
-          {[...Array(4)].map((_, i) => (
-            <Grid key={i} size={{ xs: 12, sm: 6, lg: 4, xl: 3 }}>
-              <Skeleton variant="rectangular" height={160} sx={{ borderRadius: 1 }} />
-            </Grid>
-          ))}
+      {/* Row 2: Charts */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        {/* Status distribution - Pie Chart */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          {isLoading ? (
+            <WidgetSkeleton height={260} />
+          ) : (
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                  상태별 이슈 분포
+                </Typography>
+                {(!data?.issuesByStatus || data.issuesByStatus.length === 0) ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      데이터가 없습니다
+                    </Typography>
+                  </Box>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <PieChart>
+                      <Pie
+                        data={data.issuesByStatus}
+                        dataKey="count"
+                        nameKey="statusName"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                        label={({ name, value }: { name?: string; value?: number }) =>
+                          `${name ?? ''} (${value ?? 0})`
+                        }
+                      >
+                        {data.issuesByStatus.map((entry, index) => (
+                          <Cell
+                            key={entry.statusName}
+                            fill={getStatusColor(entry.statusName, index)}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </Grid>
-      )}
 
-      {!isLoading && !isError && projects.length === 0 && (
-        <Box sx={{ textAlign: 'center', py: 6 }}>
-          <FolderIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-          <Typography color="text.secondary">
-            프로젝트가 없습니다. 프로젝트를 생성해주세요.
-          </Typography>
-        </Box>
-      )}
+        {/* Priority distribution - Bar Chart */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          {isLoading ? (
+            <WidgetSkeleton height={260} />
+          ) : (
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                  우선순위별 이슈 분포
+                </Typography>
+                {(!data?.issuesByPriority || data.issuesByPriority.length === 0) ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      데이터가 없습니다
+                    </Typography>
+                  </Box>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={data.issuesByPriority}>
+                      <XAxis dataKey="priorityName" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Bar dataKey="count" name="이슈 수">
+                        {data.issuesByPriority.map((entry, index) => (
+                          <Cell
+                            key={entry.priorityName}
+                            fill={getPriorityBarColor(entry.priorityName, index)}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </Grid>
+      </Grid>
 
-      {!isLoading && !isError && projects.length > 0 && (
-        <Grid container spacing={2}>
-          {projects.map((project) => {
-            const stats = projectStats.find((s) => s.project.id === project.id);
-            return (
-              <Grid key={project.id} size={{ xs: 12, sm: 6, lg: 4, xl: 3 }}>
-                <Card
-                  variant="outlined"
-                  sx={{ height: '100%', '&:hover': { borderColor: 'primary.main' } }}
-                >
-                  <CardActionArea
-                    onClick={() => navigate(`/projects/${project.identifier}`)}
-                    sx={{ height: '100%' }}
-                  >
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          {project.name}
-                        </Typography>
-                        {project.isPublic ? (
-                          <Chip icon={<PublicIcon />} label="공개" size="small" color="success" variant="outlined" />
-                        ) : (
-                          <Chip icon={<LockIcon />} label="비공개" size="small" variant="outlined" />
-                        )}
-                      </Box>
-
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        {project.identifier}
-                      </Typography>
-
-                      {project.description && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            mb: 2,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                          }}
+      {/* Row 3: Issue lists */}
+      <Grid container spacing={2}>
+        {/* My issues */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          {isLoading ? (
+            <WidgetSkeleton height={200} />
+          ) : (
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                  내 이슈
+                </Typography>
+                {(!data?.myIssues || data.myIssues.length === 0) ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <AssignmentIndIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      배정된 이슈가 없습니다
+                    </Typography>
+                  </Box>
+                ) : isMobile ? (
+                  // Mobile: card list
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {data.myIssues.slice(0, 10).map((issue) => (
+                      <Card
+                        key={issue.id}
+                        variant="outlined"
+                        sx={{ '&:hover': { borderColor: 'primary.main' } }}
+                      >
+                        <CardActionArea
+                          onClick={() =>
+                            navigate(`/projects/${issue.projectIdentifier}/issues/${issue.id}`)
+                          }
                         >
-                          {project.description}
-                        </Typography>
-                      )}
-
-                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <BugReportIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">
-                            {statsQuery.isLoading ? '...' : `이슈 ${stats?.issueCount ?? 0}`}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <PeopleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">
-                            {statsQuery.isLoading ? '...' : `멤버 ${stats?.memberCount ?? 0}`}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <ScheduleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">
-                            {formatDate(project.createdAt)}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              </Grid>
-            );
-          })}
+                          <CardContent sx={{ py: 1, px: 1.5 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box sx={{ flex: 1, mr: 1 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  #{issue.id} - {issue.projectName}
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                  {issue.subject}
+                                </Typography>
+                              </Box>
+                              <Chip
+                                label={issue.priorityName}
+                                size="small"
+                                color={getPriorityChipColor(issue.priorityName)}
+                                variant="outlined"
+                              />
+                            </Box>
+                          </CardContent>
+                        </CardActionArea>
+                      </Card>
+                    ))}
+                  </Box>
+                ) : (
+                  // Desktop: compact table
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>#</TableCell>
+                          <TableCell>제목</TableCell>
+                          <TableCell>프로젝트</TableCell>
+                          <TableCell>상태</TableCell>
+                          <TableCell>우선순위</TableCell>
+                          <TableCell>갱신일</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {data.myIssues.slice(0, 10).map((issue) => (
+                          <TableRow
+                            key={issue.id}
+                            hover
+                            sx={{ cursor: 'pointer' }}
+                            onClick={() =>
+                              navigate(`/projects/${issue.projectIdentifier}/issues/${issue.id}`)
+                            }
+                          >
+                            <TableCell>
+                              <Typography variant="body2" color="text.secondary">
+                                {issue.id}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {issue.subject}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" color="text.secondary">
+                                {issue.projectName}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={issue.statusName} size="small" variant="outlined" />
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={issue.priorityName}
+                                size="small"
+                                color={getPriorityChipColor(issue.priorityName)}
+                                variant="outlined"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" color="text.secondary">
+                                {formatDate(issue.updatedAt)}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </Grid>
-      )}
 
-      {/* Recent Activity placeholder */}
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>최근 활동</Typography>
-        <Card variant="outlined">
-          <CardContent>
-            <Typography color="text.secondary" variant="body2">
-              활동 피드는 다음 업데이트에서 제공될 예정입니다.
-            </Typography>
-          </CardContent>
-        </Card>
-      </Box>
+        {/* Overdue issues */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          {isLoading ? (
+            <WidgetSkeleton height={200} />
+          ) : (
+            <Card
+              variant="outlined"
+              sx={{
+                height: '100%',
+                borderColor: overdueCount > 0 ? 'error.light' : undefined,
+              }}
+            >
+              <CardContent>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 600,
+                    mb: 2,
+                    color: overdueCount > 0 ? 'error.main' : undefined,
+                  }}
+                >
+                  기한 초과 이슈
+                </Typography>
+                {(!data?.overdueIssues || data.overdueIssues.length === 0) ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <CheckCircleIcon sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      기한 초과 이슈가 없습니다
+                    </Typography>
+                  </Box>
+                ) : isMobile ? (
+                  // Mobile: card list
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {data.overdueIssues.slice(0, 10).map((issue) => (
+                      <Card
+                        key={issue.id}
+                        variant="outlined"
+                        sx={{
+                          borderColor: 'error.light',
+                          '&:hover': { borderColor: 'error.main' },
+                        }}
+                      >
+                        <CardActionArea
+                          onClick={() =>
+                            navigate(`/projects/${issue.projectIdentifier}/issues/${issue.id}`)
+                          }
+                        >
+                          <CardContent sx={{ py: 1, px: 1.5 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box sx={{ flex: 1, mr: 1 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  #{issue.id} - {issue.projectName}
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                  {issue.subject}
+                                </Typography>
+                              </Box>
+                              <Typography variant="caption" color="error">
+                                {formatDate(issue.dueDate)}
+                              </Typography>
+                            </Box>
+                          </CardContent>
+                        </CardActionArea>
+                      </Card>
+                    ))}
+                  </Box>
+                ) : (
+                  // Desktop: compact table
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>#</TableCell>
+                          <TableCell>제목</TableCell>
+                          <TableCell>프로젝트</TableCell>
+                          <TableCell>기한</TableCell>
+                          <TableCell>담당자</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {data.overdueIssues.slice(0, 10).map((issue) => (
+                          <TableRow
+                            key={issue.id}
+                            hover
+                            sx={{ cursor: 'pointer' }}
+                            onClick={() =>
+                              navigate(`/projects/${issue.projectIdentifier}/issues/${issue.id}`)
+                            }
+                          >
+                            <TableCell>
+                              <Typography variant="body2" color="text.secondary">
+                                {issue.id}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {issue.subject}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" color="text.secondary">
+                                {issue.projectName}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" color="error">
+                                {formatDate(issue.dueDate)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" color="text.secondary">
+                                {issue.assignedToName ?? '-'}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </Grid>
+      </Grid>
     </Box>
   );
 }

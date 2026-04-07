@@ -385,6 +385,83 @@ public class IssueService : IIssueService
         return true;
     }
 
+    public async Task<IssueDetailDto?> UpdatePositionAsync(int id, UpdateIssuePositionRequest request, int userId)
+    {
+        var issue = await _dbContext.Issues
+            .Include(i => i.Status)
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (issue is null)
+            return null;
+
+        var journalDetails = new List<JournalDetail>();
+
+        // If StatusId is provided and different from current → change status
+        if (request.StatusId.HasValue && request.StatusId.Value != issue.StatusId)
+        {
+            var newStatus = await _dbContext.IssueStatuses.FindAsync(request.StatusId.Value)
+                ?? throw new KeyNotFoundException("상태를 찾을 수 없습니다.");
+
+            var oldStatusId = issue.StatusId.ToString();
+            issue.StatusId = request.StatusId.Value;
+
+            journalDetails.Add(new JournalDetail
+            {
+                PropertyName = nameof(Issue.StatusId),
+                OldValue = oldStatusId,
+                NewValue = issue.StatusId.ToString()
+            });
+
+            // Auto DoneRatio=100 when status changes to IsClosed=true
+            if (newStatus.IsClosed)
+            {
+                var oldDoneRatio = issue.DoneRatio.ToString();
+                issue.DoneRatio = 100;
+
+                if (oldDoneRatio != "100")
+                {
+                    journalDetails.Add(new JournalDetail
+                    {
+                        PropertyName = nameof(Issue.DoneRatio),
+                        OldValue = oldDoneRatio,
+                        NewValue = "100"
+                    });
+                }
+            }
+        }
+
+        // Update position
+        issue.Position = request.Position;
+
+        // Create journal if there are changes
+        if (journalDetails.Count > 0)
+        {
+            var journal = new Journal
+            {
+                IssueId = issue.Id,
+                UserId = userId,
+                Details = journalDetails
+            };
+            _dbContext.Journals.Add(journal);
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        // Reload with navigation properties
+        var updated = await _dbContext.Issues
+            .Include(i => i.Tracker)
+            .Include(i => i.Status)
+            .Include(i => i.Priority)
+            .Include(i => i.Category)
+            .Include(i => i.Version)
+            .Include(i => i.Author)
+            .Include(i => i.AssignedTo)
+            .Include(i => i.ParentIssue)
+            .FirstAsync(i => i.Id == issue.Id);
+
+        return MapToDetailDto(updated);
+    }
+
     private static IssueDetailDto MapToDetailDto(Issue issue)
     {
         return new IssueDetailDto

@@ -83,6 +83,27 @@ public class IssuesController : ControllerBase
         return Ok(issue);
     }
 
+    [HttpPut("{id:int}/position")]
+    [ProducesResponseType(typeof(IssueDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdatePositionAsync(int id, [FromBody] UpdateIssuePositionRequest request)
+    {
+        var userId = User.GetUserId();
+        var issue = await _issueService.UpdatePositionAsync(id, request, userId);
+
+        if (issue is null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "찾을 수 없음",
+                Detail = "일감을 찾을 수 없습니다."
+            });
+        }
+
+        return Ok(issue);
+    }
+
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

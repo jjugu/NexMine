@@ -21,6 +21,7 @@ const IssueCreatePage = lazy(() => import('./features/issues/components/IssueCre
 const IssueDetailPage = lazy(() => import('./features/issues/components/IssueDetailPage'));
 const VersionListPage = lazy(() => import('./features/issues/components/VersionListPage'));
 const ProjectSettingsPage = lazy(() => import('./features/projects/components/ProjectSettingsPage'));
+const KanbanBoardPage = lazy(() => import('./features/kanban/components/KanbanBoardPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,6 +90,8 @@ export default function App() {
                   <Route path="/projects/:identifier/issues/new" element={<IssueCreatePage />} />
                   <Route path="/projects/:identifier/issues/:id" element={<IssueDetailPage />} />
                   <Route path="/projects/:identifier/versions" element={<VersionListPage />} />
+                  <Route path="/projects/:identifier/board" element={<KanbanBoardPage />} />
+                  <Route path="/projects/:identifier/kanban" element={<KanbanBoardPage />} />
                   <Route path="/projects/:identifier/settings" element={<ProjectSettingsPage />} />
                 </Route>
               </Route>

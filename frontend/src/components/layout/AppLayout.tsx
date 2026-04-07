@@ -38,7 +38,7 @@ interface ProjectSubNavItem {
 function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
   return [
     { label: '이슈', icon: <BugReportIcon />, path: `/projects/${identifier}/issues` },
-    { label: '칸반', icon: <ViewKanbanIcon />, path: `/projects/${identifier}/kanban`, isDisabled: true },
+    { label: '칸반', icon: <ViewKanbanIcon />, path: `/projects/${identifier}/kanban` },
     { label: '간트', icon: <BarChartIcon />, path: `/projects/${identifier}/gantt`, isDisabled: true },
     { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar`, isDisabled: true },
     { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki`, isDisabled: true },
