@@ -5,8 +5,10 @@ using Nexmine.Application.Features.Auth.Interfaces;
 using Nexmine.Application.Features.CustomFields.Interfaces;
 using Nexmine.Application.Features.Dashboard.Interfaces;
 using Nexmine.Application.Features.Documents.Interfaces;
+using Nexmine.Application.Features.Export.Interfaces;
 using Nexmine.Application.Features.Issues.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
+using Nexmine.Application.Features.Reports.Interfaces;
 using Nexmine.Application.Features.Search.Interfaces;
 using Nexmine.Application.Features.Wiki.Interfaces;
 using Nexmine.Application.Features.Workflows.Interfaces;
@@ -53,6 +55,10 @@ public static class DependencyInjection
 
         // Workflow service
         services.AddScoped<IWorkflowService, WorkflowService>();
+
+        // Export & Reports
+        services.AddScoped<IExportService, ExportService>();
+        services.AddScoped<IReportService, ReportService>();
 
         return services;
     }

@@ -46,6 +46,9 @@ const SearchResultsPage = lazy(() => import('./features/search/components/Search
 // Activity
 const ActivityPage = lazy(() => import('./features/activity/components/ActivityPage'));
 
+// Reports
+const TimeReportPage = lazy(() => import('./features/reports/components/TimeReportPage'));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, refetchOnWindowFocus: false },
@@ -130,6 +133,9 @@ function AppContent() {
 
                 {/* Activity */}
                 <Route path="/activity" element={<ActivityPage />} />
+
+                {/* Reports */}
+                <Route path="/reports/time" element={<TimeReportPage />} />
 
                 {/* Search */}
                 <Route path="/search" element={<SearchResultsPage />} />

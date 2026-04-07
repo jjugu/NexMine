@@ -34,6 +34,7 @@ import TuneIcon from '@mui/icons-material/Tune';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import HistoryIcon from '@mui/icons-material/History';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import { useIsFetching } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
@@ -46,6 +47,7 @@ const navItems = [
   { label: '대시보드', icon: <DashboardIcon />, path: '/dashboard' },
   { label: '프로젝트', icon: <FolderIcon />, path: '/projects' },
   { label: '활동', icon: <HistoryIcon />, path: '/activity' },
+  { label: '시간 보고서', icon: <AssessmentIcon />, path: '/reports/time' },
 ];
 
 const adminNavItems = [

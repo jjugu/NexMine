@@ -8,11 +8,13 @@ import {
   CardActionArea, useMediaQuery, useTheme, Grid,
   MenuItem, Select, FormControl, InputLabel, IconButton,
   Breadcrumbs, Link, Collapse, LinearProgress, TableSortLabel,
+  CircularProgress, Tooltip,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import DownloadIcon from '@mui/icons-material/Download';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import { QueryState, TableSkeleton, CardSkeleton } from '../../../components/common/QueryState';
 import axiosInstance from '../../../api/axiosInstance';
@@ -62,6 +64,7 @@ export default function IssueListPage() {
   const sortDesc = searchParams.get('sortDesc') !== 'false';
 
   const [searchInput, setSearchInput] = useState(searchFromUrl);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Reference data
   const trackersQuery = useTrackers();
@@ -166,6 +169,39 @@ export default function IssueListPage() {
     navigate(`/projects/${identifier}/issues/new`);
   }
 
+  const handleExportCsv = useCallback(async () => {
+    if (!identifier) return;
+    setIsExporting(true);
+    try {
+      const exportParams: Record<string, string | number | undefined> = {
+        search: searchFromUrl || undefined,
+        trackerId: trackerIdFilter ? Number(trackerIdFilter) : undefined,
+        statusId: statusIdFilter ? Number(statusIdFilter) : undefined,
+        priorityId: priorityIdFilter ? Number(priorityIdFilter) : undefined,
+        assignedToId: assignedToIdFilter ? Number(assignedToIdFilter) : undefined,
+      };
+      const response = await axiosInstance.get(
+        `/projects/${identifier}/issues/export`,
+        { params: exportParams, responseType: 'blob' },
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute(
+        'download',
+        `issues_${new Date().toISOString().slice(0, 10)}.csv`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // error handled by axios interceptor
+    } finally {
+      setIsExporting(false);
+    }
+  }, [identifier, searchFromUrl, trackerIdFilter, statusIdFilter, priorityIdFilter, assignedToIdFilter]);
+
   const sortDirection = sortDesc ? 'desc' : 'asc';
 
   const columns: Array<{ field: SortField; label: string; minWidth?: number }> = [
@@ -207,6 +243,16 @@ export default function IssueListPage() {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
           <Typography variant="h5">이슈</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
+            <Tooltip title="CSV 내보내기">
+              <span>
+                <IconButton
+                  onClick={handleExportCsv}
+                  disabled={isExporting}
+                >
+                  {isExporting ? <CircularProgress size={20} /> : <DownloadIcon />}
+                </IconButton>
+              </span>
+            </Tooltip>
             <IconButton
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               color={isFilterOpen ? 'primary' : 'default'}
