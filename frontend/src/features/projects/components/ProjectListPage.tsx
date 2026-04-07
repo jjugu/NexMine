@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Button, TextField, InputAdornment,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Chip, Skeleton, TablePagination, Card, CardContent,
+  Paper, Chip, TablePagination, Card, CardContent,
   CardActionArea, useMediaQuery, useTheme, Grid,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -12,6 +12,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import LockIcon from '@mui/icons-material/Lock';
 import PublicIcon from '@mui/icons-material/Public';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import { QueryState, TableSkeleton, CardSkeleton } from '../../../components/common/QueryState';
 import axiosInstance from '../../../api/axiosInstance';
 import type { ProjectDtoPagedResult } from '../../../api/generated/model';
 import ProjectCreateDialog from './ProjectCreateDialog';
@@ -61,7 +62,7 @@ export default function ProjectListPage() {
     return () => clearTimeout(timer);
   }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['projects', { page, pageSize, search: searchFromUrl }],
     queryFn: () => fetchProjects(page, pageSize, searchFromUrl),
   });
@@ -131,48 +132,38 @@ export default function ProjectListPage() {
         />
       </Box>
 
-      {/* Loading */}
-      {isLoading && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} variant="rectangular" height={48} sx={{ borderRadius: 1 }} />
-          ))}
-        </Box>
-      )}
-
-      {/* Error */}
-      {isError && (
-        <Typography color="error" sx={{ mt: 2 }}>
-          프로젝트 목록을 불러오는데 실패했습니다.
-        </Typography>
-      )}
-
-      {/* Empty state */}
-      {!isLoading && !isError && items.length === 0 && (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            py: 8,
-          }}
-        >
-          <FolderOpenIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-            프로젝트가 없습니다
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>
-            첫 프로젝트를 만들어보세요
-          </Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateOpen}>
-            새 프로젝트 만들기
-          </Button>
-        </Box>
-      )}
-
+      <QueryState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={items.length === 0}
+        onRetry={() => refetch()}
+        errorMessage="프로젝트 목록을 불러오는데 실패했습니다."
+        skeleton={isMobile ? <CardSkeleton count={4} /> : <TableSkeleton rows={5} columns={4} />}
+        emptyState={
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              py: 8,
+            }}
+          >
+            <FolderOpenIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+              프로젝트가 없습니다
+            </Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>
+              첫 프로젝트를 만들어보세요
+            </Typography>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateOpen}>
+              새 프로젝트 만들기
+            </Button>
+          </Box>
+        }
+      >
       {/* Desktop: table view */}
-      {!isLoading && !isError && items.length > 0 && !isMobile && (
+      {!isMobile && (
         <TableContainer component={Paper} variant="outlined">
           <Table>
             <TableHead>
@@ -228,7 +219,7 @@ export default function ProjectListPage() {
       )}
 
       {/* Mobile: card view */}
-      {!isLoading && !isError && items.length > 0 && isMobile && (
+      {isMobile && (
         <>
           <Grid container spacing={1.5}>
             {items.map((project) => (
@@ -268,6 +259,7 @@ export default function ProjectListPage() {
           />
         </>
       )}
+      </QueryState>
 
       {/* Create Dialog */}
       <ProjectCreateDialog open={isCreateOpen} onClose={handleCreateClose} />

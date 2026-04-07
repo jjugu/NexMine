@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
 using Nexmine.Application.Features.Wiki.Dtos;
 using Nexmine.Application.Features.Wiki.Interfaces;
@@ -10,10 +11,34 @@ namespace Nexmine.Infrastructure.Services;
 public class WikiService : IWikiService
 {
     private readonly NexmineDbContext _dbContext;
+    private static readonly HtmlSanitizer Sanitizer = CreateSanitizer();
 
     public WikiService(NexmineDbContext dbContext)
     {
         _dbContext = dbContext;
+    }
+
+    private static HtmlSanitizer CreateSanitizer()
+    {
+        var sanitizer = new HtmlSanitizer();
+        sanitizer.AllowedTags.Remove("script");
+        sanitizer.AllowedTags.Remove("iframe");
+        sanitizer.AllowedTags.Remove("object");
+        sanitizer.AllowedTags.Remove("embed");
+        sanitizer.AllowedTags.Remove("form");
+        sanitizer.AllowedTags.Remove("textarea");
+        sanitizer.AllowedTags.Remove("select");
+        sanitizer.AllowedTags.Remove("button");
+        sanitizer.AllowedSchemes.Clear();
+        sanitizer.AllowedSchemes.Add("http");
+        sanitizer.AllowedSchemes.Add("https");
+        sanitizer.AllowedSchemes.Add("mailto");
+        return sanitizer;
+    }
+
+    private static string? SanitizeHtml(string? html)
+    {
+        return html is null ? null : Sanitizer.Sanitize(html);
     }
 
     public async Task<List<WikiPageDto>> ListAsync(string projectIdentifier)
@@ -71,13 +96,15 @@ public class WikiService : IWikiService
                 throw new KeyNotFoundException("상위 위키 페이지를 찾을 수 없습니다.");
         }
 
+        var sanitizedHtml = SanitizeHtml(request.ContentHtml);
+
         var page = new WikiPage
         {
             ProjectId = project.Id,
             ParentPageId = request.ParentPageId,
             Title = request.Title,
             Slug = slug,
-            ContentHtml = request.ContentHtml,
+            ContentHtml = sanitizedHtml,
             AuthorId = userId,
             Version = 1
         };
@@ -90,7 +117,7 @@ public class WikiService : IWikiService
             WikiPage = page,
             Version = 1,
             Title = request.Title,
-            ContentHtml = request.ContentHtml,
+            ContentHtml = sanitizedHtml,
             EditedByUserId = userId,
             Comments = null
         };
@@ -134,7 +161,7 @@ public class WikiService : IWikiService
         }
 
         if (request.ContentHtml is not null)
-            page.ContentHtml = request.ContentHtml;
+            page.ContentHtml = SanitizeHtml(request.ContentHtml);
 
         if (request.ParentPageId.HasValue)
         {

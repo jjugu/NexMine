@@ -1,10 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Box, Typography, Grid, Card, CardContent,
-  Skeleton, Alert, Chip, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper,
-  useMediaQuery, useTheme, CardActionArea,
+  Box, Typography, Grid, Card, CardContent, Chip,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Paper, useMediaQuery, useTheme, CardActionArea,
 } from '@mui/material';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
@@ -15,6 +14,7 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import axiosInstance from '../../../api/axiosInstance';
+import { QueryState, DashboardSkeleton } from '../../../components/common/QueryState';
 
 // --- Types for dashboard API response ---
 interface DashboardIssue {
@@ -109,34 +109,18 @@ function getPriorityChipColor(name?: string): 'error' | 'warning' | 'info' | 'de
   return 'default';
 }
 
-// --- Skeleton widget ---
-function WidgetSkeleton({ height = 200 }: { height?: number }) {
-  return (
-    <Card variant="outlined" sx={{ height: '100%' }}>
-      <CardContent>
-        <Skeleton width="40%" height={28} sx={{ mb: 1 }} />
-        <Skeleton variant="rectangular" height={height} sx={{ borderRadius: 1 }} />
-      </CardContent>
-    </Card>
-  );
-}
-
 // --- Main component ---
 export default function DashboardPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const dashboardQuery = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () =>
       axiosInstance.get<DashboardData>('/dashboard').then((r) => r.data),
     refetchInterval: 60000,
   });
-
-  const data = dashboardQuery.data;
-  const isLoading = dashboardQuery.isLoading;
-  const isError = dashboardQuery.isError;
 
   const totalIssues = data?.totalIssueCount ?? 0;
   const myIssueCount = data?.myIssues?.length ?? 0;
@@ -150,82 +134,81 @@ export default function DashboardPage() {
     <Box>
       <Typography variant="h5" sx={{ mb: 3 }}>대시보드</Typography>
 
-      {isError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          대시보드 데이터를 불러오는데 실패했습니다.
-        </Alert>
-      )}
+      <QueryState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={!data}
+        onRetry={() => refetch()}
+        errorMessage="대시보드 데이터를 불러오는데 실패했습니다."
+        skeleton={<DashboardSkeleton />}
+      >
+        {/* Row 1: Summary stat cards */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {/* Total issues */}
+          <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <BugReportIcon color="primary" sx={{ fontSize: 40 }} />
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    {totalIssues}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">전체 이슈</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
 
-      {/* Row 1: Summary stat cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {/* Total issues */}
-        <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
-          <Card variant="outlined" sx={{ height: '100%' }}>
-            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <BugReportIcon color="primary" sx={{ fontSize: 40 }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                  {isLoading ? <Skeleton width={40} /> : totalIssues}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">전체 이슈</Typography>
-              </Box>
-            </CardContent>
-          </Card>
+          {/* My issues */}
+          <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <AssignmentIndIcon color="secondary" sx={{ fontSize: 40 }} />
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    {myIssueCount}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">내 이슈</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Overdue */}
+          <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <WarningAmberIcon sx={{ fontSize: 40, color: overdueCount > 0 ? 'error.main' : 'text.disabled' }} />
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: overdueCount > 0 ? 'error.main' : undefined }}>
+                    {overdueCount}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">기한 초과</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Completion rate */}
+          <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <CheckCircleIcon sx={{ fontSize: 40, color: 'success.main' }} />
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    {`${completionRate}%`}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">완료율</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
 
-        {/* My issues */}
-        <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
-          <Card variant="outlined" sx={{ height: '100%' }}>
-            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <AssignmentIndIcon color="secondary" sx={{ fontSize: 40 }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                  {isLoading ? <Skeleton width={40} /> : myIssueCount}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">내 이슈</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Overdue */}
-        <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
-          <Card variant="outlined" sx={{ height: '100%' }}>
-            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <WarningAmberIcon sx={{ fontSize: 40, color: overdueCount > 0 ? 'error.main' : 'text.disabled' }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: overdueCount > 0 ? 'error.main' : undefined }}>
-                  {isLoading ? <Skeleton width={40} /> : overdueCount}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">기한 초과</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Completion rate */}
-        <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
-          <Card variant="outlined" sx={{ height: '100%' }}>
-            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <CheckCircleIcon sx={{ fontSize: 40, color: 'success.main' }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                  {isLoading ? <Skeleton width={40} /> : `${completionRate}%`}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">완료율</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Row 2: Charts */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {/* Status distribution - Pie Chart */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          {isLoading ? (
-            <WidgetSkeleton height={260} />
-          ) : (
+        {/* Row 2: Charts */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {/* Status distribution - Pie Chart */}
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
@@ -265,14 +248,10 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-          )}
-        </Grid>
+          </Grid>
 
-        {/* Priority distribution - Bar Chart */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          {isLoading ? (
-            <WidgetSkeleton height={260} />
-          ) : (
+          {/* Priority distribution - Bar Chart */}
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
@@ -303,17 +282,13 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-          )}
+          </Grid>
         </Grid>
-      </Grid>
 
-      {/* Row 3: Issue lists */}
-      <Grid container spacing={2}>
-        {/* My issues */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          {isLoading ? (
-            <WidgetSkeleton height={200} />
-          ) : (
+        {/* Row 3: Issue lists */}
+        <Grid container spacing={2}>
+          {/* My issues */}
+          <Grid size={{ xs: 12, lg: 6 }}>
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
@@ -425,14 +400,10 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-          )}
-        </Grid>
+          </Grid>
 
-        {/* Overdue issues */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          {isLoading ? (
-            <WidgetSkeleton height={200} />
-          ) : (
+          {/* Overdue issues */}
+          <Grid size={{ xs: 12, lg: 6 }}>
             <Card
               variant="outlined"
               sx={{
@@ -550,9 +521,9 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-          )}
+          </Grid>
         </Grid>
-      </Grid>
+      </QueryState>
     </Box>
   );
 }

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Button, TextField, InputAdornment,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Chip, Skeleton, TablePagination, Card, CardContent,
+  Paper, Chip, TablePagination, Card, CardContent,
   CardActionArea, useMediaQuery, useTheme, Grid,
   MenuItem, Select, FormControl, InputLabel, IconButton,
   Breadcrumbs, Link, Collapse, LinearProgress, TableSortLabel,
@@ -14,6 +14,7 @@ import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import BugReportIcon from '@mui/icons-material/BugReport';
+import { QueryState, TableSkeleton, CardSkeleton } from '../../../components/common/QueryState';
 import axiosInstance from '../../../api/axiosInstance';
 import type { IssueDtoPagedResult, ProjectDto } from '../../../api/generated/model';
 import {
@@ -104,14 +105,14 @@ export default function IssueListPage() {
     SortDesc: sortDesc,
   };
 
-  const issuesQuery = useQuery({
+  const { data: issuesData, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['issues', identifier, queryParams],
     queryFn: () => fetchIssues(identifier!, queryParams),
     enabled: !!identifier,
   });
 
-  const items = issuesQuery.data?.items ?? [];
-  const totalCount = issuesQuery.data?.totalCount ?? 0;
+  const items = issuesData?.items ?? [];
+  const totalCount = issuesData?.totalCount ?? 0;
 
   function handleFilterChange(key: string, value: string) {
     const newParams = new URLSearchParams(searchParams);
@@ -304,194 +305,185 @@ export default function IssueListPage() {
         </Paper>
       </Collapse>
 
-      {/* Loading */}
-      {issuesQuery.isLoading && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} variant="rectangular" height={48} sx={{ borderRadius: 1 }} />
-          ))}
-        </Box>
-      )}
-
-      {/* Error */}
-      {issuesQuery.isError && (
-        <Typography color="error" sx={{ mt: 2 }}>
-          이슈 목록을 불러오는데 실패했습니다.
-        </Typography>
-      )}
-
-      {/* Empty state */}
-      {!issuesQuery.isLoading && !issuesQuery.isError && items.length === 0 && (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            py: 8,
-          }}
-        >
-          <BugReportIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-            이슈가 없습니다
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>
-            첫 이슈를 등록해보세요
-          </Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleNewIssue}>
-            새 이슈 만들기
-          </Button>
-        </Box>
-      )}
-
-      {/* Desktop: table view */}
-      {!issuesQuery.isLoading && !issuesQuery.isError && items.length > 0 && !isMobile && (
-        <TableContainer component={Paper} variant="outlined">
-          {issuesQuery.isFetching && <LinearProgress />}
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                {columns.map((col) => (
-                  <TableCell key={col.field} sx={{ minWidth: col.minWidth }}>
-                    <TableSortLabel
-                      active={sortBy === col.field}
-                      direction={sortBy === col.field ? sortDirection : 'asc'}
-                      onClick={() => handleSort(col.field)}
-                    >
-                      {col.label}
-                    </TableSortLabel>
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.map((issue) => (
-                <TableRow
-                  key={issue.id}
-                  hover
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => handleRowClick(issue.id)}
-                >
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      #{issue.id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {issue.subject}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip label={issue.trackerName ?? '-'} size="small" variant="outlined" />
-                  </TableCell>
-                  <TableCell>
-                    <Chip label={issue.statusName ?? '-'} size="small" color="success" variant="outlined" />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={issue.priorityName ?? '-'}
-                      size="small"
-                      color={getPriorityColor(issue.priorityName)}
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {issue.assignedToName ?? '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 80 }}>
-                      <LinearProgress
-                        variant="determinate"
-                        value={issue.doneRatio ?? 0}
-                        sx={{ flex: 1, height: 6, borderRadius: 3 }}
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        {issue.doneRatio ?? 0}%
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {formatDate(issue.updatedAt)}
-                    </Typography>
-                  </TableCell>
+      <QueryState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={items.length === 0}
+        onRetry={() => refetch()}
+        errorMessage="이슈 목록을 불러오는데 실패했습니다."
+        skeleton={isMobile ? <CardSkeleton count={5} /> : <TableSkeleton rows={5} columns={8} />}
+        emptyState={
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              py: 8,
+            }}
+          >
+            <BugReportIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+              이슈가 없습니다
+            </Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>
+              첫 이슈를 등록해보세요
+            </Typography>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleNewIssue}>
+              새 이슈 만들기
+            </Button>
+          </Box>
+        }
+      >
+        {/* Desktop: table view */}
+        {!isMobile && (
+          <TableContainer component={Paper} variant="outlined">
+            {isFetching && <LinearProgress />}
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  {columns.map((col) => (
+                    <TableCell key={col.field} sx={{ minWidth: col.minWidth }}>
+                      <TableSortLabel
+                        active={sortBy === col.field}
+                        direction={sortBy === col.field ? sortDirection : 'asc'}
+                        onClick={() => handleSort(col.field)}
+                      >
+                        {col.label}
+                      </TableSortLabel>
+                    </TableCell>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <TablePagination
-            component="div"
-            count={totalCount}
-            page={page - 1}
-            onPageChange={handleChangePage}
-            rowsPerPage={pageSize}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[10, 25, 50]}
-            labelRowsPerPage="페이지당 항목"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
-          />
-        </TableContainer>
-      )}
-
-      {/* Mobile: card view */}
-      {!issuesQuery.isLoading && !issuesQuery.isError && items.length > 0 && isMobile && (
-        <>
-          {issuesQuery.isFetching && <LinearProgress sx={{ mb: 1 }} />}
-          <Grid container spacing={1.5}>
-            {items.map((issue) => (
-              <Grid key={issue.id} size={{ xs: 12 }}>
-                <Card variant="outlined">
-                  <CardActionArea onClick={() => handleRowClick(issue.id)}>
-                    <CardContent sx={{ py: 1.5, px: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                        <Box sx={{ flex: 1, mr: 1 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            #{issue.id}
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {issue.subject}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                          <Chip
-                            label={issue.statusName ?? '-'}
-                            size="small"
-                            color="success"
-                            variant="outlined"
-                          />
-                          <Chip
-                            label={issue.priorityName ?? '-'}
-                            size="small"
-                            color={getPriorityColor(issue.priorityName)}
-                            variant="outlined"
-                          />
-                        </Box>
-                      </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        {issue.trackerName} &middot; {issue.assignedToName ?? '미배정'} &middot; {formatDate(issue.updatedAt)}
+              </TableHead>
+              <TableBody>
+                {items.map((issue) => (
+                  <TableRow
+                    key={issue.id}
+                    hover
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => handleRowClick(issue.id)}
+                  >
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        #{issue.id}
                       </Typography>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-          <TablePagination
-            component="div"
-            count={totalCount}
-            page={page - 1}
-            onPageChange={handleChangePage}
-            rowsPerPage={pageSize}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[10, 25, 50]}
-            labelRowsPerPage="페이지당"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
-          />
-        </>
-      )}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {issue.subject}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={issue.trackerName ?? '-'} size="small" variant="outlined" />
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={issue.statusName ?? '-'} size="small" color="success" variant="outlined" />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={issue.priorityName ?? '-'}
+                        size="small"
+                        color={getPriorityColor(issue.priorityName)}
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {issue.assignedToName ?? '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 80 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={issue.doneRatio ?? 0}
+                          sx={{ flex: 1, height: 6, borderRadius: 3 }}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          {issue.doneRatio ?? 0}%
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {formatDate(issue.updatedAt)}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <TablePagination
+              component="div"
+              count={totalCount}
+              page={page - 1}
+              onPageChange={handleChangePage}
+              rowsPerPage={pageSize}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[10, 25, 50]}
+              labelRowsPerPage="페이지당 항목"
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
+            />
+          </TableContainer>
+        )}
+
+        {/* Mobile: card view */}
+        {isMobile && (
+          <>
+            {isFetching && <LinearProgress sx={{ mb: 1 }} />}
+            <Grid container spacing={1.5}>
+              {items.map((issue) => (
+                <Grid key={issue.id} size={{ xs: 12 }}>
+                  <Card variant="outlined">
+                    <CardActionArea onClick={() => handleRowClick(issue.id)}>
+                      <CardContent sx={{ py: 1.5, px: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                          <Box sx={{ flex: 1, mr: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              #{issue.id}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {issue.subject}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                            <Chip
+                              label={issue.statusName ?? '-'}
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                            />
+                            <Chip
+                              label={issue.priorityName ?? '-'}
+                              size="small"
+                              color={getPriorityColor(issue.priorityName)}
+                              variant="outlined"
+                            />
+                          </Box>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {issue.trackerName} &middot; {issue.assignedToName ?? '미배정'} &middot; {formatDate(issue.updatedAt)}
+                        </Typography>
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+            <TablePagination
+              component="div"
+              count={totalCount}
+              page={page - 1}
+              onPageChange={handleChangePage}
+              rowsPerPage={pageSize}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[10, 25, 50]}
+              labelRowsPerPage="페이지당"
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
+            />
+          </>
+        )}
+      </QueryState>
     </Box>
   );
 }

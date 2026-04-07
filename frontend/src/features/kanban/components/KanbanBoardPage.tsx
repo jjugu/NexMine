@@ -2,12 +2,13 @@ import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Box, Typography, Skeleton, Alert, Breadcrumbs, Link, Button,
+  Box, Typography, Breadcrumbs, Link, Button,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
+import { QueryState, KanbanSkeleton } from '../../../components/common/QueryState';
 import axiosInstance from '../../../api/axiosInstance';
 import type { IssueStatusDto, ProjectDto } from '../../../api/generated/model';
 import KanbanColumn from './KanbanColumn';
@@ -68,13 +69,13 @@ export default function KanbanBoardPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const statusesQuery = useQuery({
+  const { refetch: refetchStatuses, ...statusesQuery } = useQuery({
     queryKey: ['issue-statuses'],
     queryFn: fetchStatuses,
     staleTime: Infinity,
   });
 
-  const issuesQuery = useQuery({
+  const { refetch: refetchIssues, ...issuesQuery } = useQuery({
     queryKey: ['kanban-issues', identifier],
     queryFn: () => fetchKanbanIssues(identifier!),
     enabled: !!identifier,
@@ -205,6 +206,11 @@ export default function KanbanBoardPage() {
   const isLoading = statusesQuery.isLoading || issuesQuery.isLoading;
   const isError = statusesQuery.isError || issuesQuery.isError;
 
+  const handleRetry = useCallback(() => {
+    refetchStatuses();
+    refetchIssues();
+  }, [refetchStatuses, refetchIssues]);
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
@@ -253,29 +259,15 @@ export default function KanbanBoardPage() {
         </Box>
       </Box>
 
-      {/* Error */}
-      {isError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          칸반 데이터를 불러오는데 실패했습니다.
-        </Alert>
-      )}
-
-      {/* Loading skeletons */}
-      {isLoading && (
-        <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', flex: 1 }}>
-          {[...Array(5)].map((_, i) => (
-            <Box key={i} sx={{ minWidth: 280, flexShrink: 0 }}>
-              <Skeleton variant="rectangular" height={40} sx={{ borderRadius: 1, mb: 1 }} />
-              <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 1, mb: 1 }} />
-              <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 1, mb: 1 }} />
-              <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 1 }} />
-            </Box>
-          ))}
-        </Box>
-      )}
-
-      {/* Kanban board */}
-      {!isLoading && !isError && (
+      {/* Kanban board with QueryState */}
+      <QueryState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={false}
+        onRetry={handleRetry}
+        errorMessage="칸반 데이터를 불러오는데 실패했습니다."
+        skeleton={<KanbanSkeleton columns={5} />}
+      >
         <DragDropContext onDragEnd={handleDragEnd}>
           <Box
             sx={{
@@ -303,7 +295,7 @@ export default function KanbanBoardPage() {
             ))}
           </Box>
         </DragDropContext>
-      )}
+      </QueryState>
     </Box>
   );
 }

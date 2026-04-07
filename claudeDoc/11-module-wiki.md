@@ -47,3 +47,4 @@
 | 2026-04-07 | multipart/form-data 업로드 실패 | axios에 `headers: {'Content-Type':'multipart/form-data'}`를 수동 설정하면 boundary 자동 생성이 안됨 | Content-Type 헤더를 제거하고 axios가 FormData에서 자동 설정하도록 위임 | FormData 전송 시 Content-Type을 수동 설정하지 않는다 — axios가 자동 처리 |
 | 2026-04-07 | 파일 업로드 성공(201)인데 UI에 안 보임 | DocumentDto에 attachments 필드 없음 — API 응답에 첨부파일 목록이 포함되지 않음 | DocumentService에서 문서 상세 조회 시 Attachment 목록도 함께 반환하도록 수정 | 첨부파일이 있는 엔티티의 상세 DTO에는 반드시 attachments 목록 포함 |
 | 2026-04-07 | 첨부파일명 표시 안 됨 + NaN MB | 프론트엔드 타입 정의와 백엔드 DTO 필드명 불일치 (프론트 타입이 백엔드 응답 구조와 다름) | 프론트엔드 타입을 백엔드 응답과 일치시키기 | API 응답 DTO 변경 시 프론트엔드 타입도 반드시 동기화 |
+| 2026-04-07 | 위키 HTML 저장 시 서버 측 XSS sanitize 미적용 | ContentHtml을 검증 없이 DB에 직접 저장 — 프론트 우회(curl 등)로 악성 HTML 주입 가능 | 1) 백엔드: Ganss.Xss.HtmlSanitizer로 저장 시 sanitize 2) 프론트: DOMPurify에 ALLOWED_TAGS/ALLOWED_ATTR 명시적 설정 | 위키/문서 등 HTML 저장 시 반드시 서버+클라이언트 양쪽에서 sanitize 적용 (defense-in-depth) |

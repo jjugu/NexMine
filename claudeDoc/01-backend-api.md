@@ -105,3 +105,5 @@ public class IssuesController : ControllerBase
 | 날짜 | 오류 내용 | 원인 | 해결책 | 방지 규칙 |
 |------|-----------|------|--------|-----------|
 | 2026-04-07 | CreatedAtAction "No route matches the supplied values" | ASP.NET Core가 메서드명에서 Async를 자동 제거하여 nameof(XxxAsync) 라우트 매칭 실패. 또한 다른 Route 경로의 액션을 참조할 때 컨트롤러명 미지정 | 1) nameof 대신 문자열 직접 지정 "GetById" 2) 다른 경로의 액션은 컨트롤러명 명시 CreatedAtAction("GetById", "Issues", ...) | CreatedAtAction은 항상 문자열 액션명 사용, Async 접미사 제거. 특수 라우트([HttpGet("/api/...")])에서는 컨트롤러명 반드시 명시 |
+| 2026-04-07 | WebApplicationFactory 통합테스트에서 seed admin 로그인 401 | EnsureCreatedAsync가 SeedData의 BCrypt 해시를 그대로 삽입하지만, 해시가 현재 BCrypt.Net 버전과 호환되지 않을 수 있음 | InitializeAsync에서 admin 패스워드를 IPasswordHashService.Hash()로 재해시 | 통합테스트 팩토리에서 seed 유저 사용 시 반드시 비밀번호를 런타임에서 재해시하여 호환성 보장 |
+| 2026-04-07 | Admin 엔드포인트 응답에서 items 프로퍼티 접근 실패 (KeyNotFoundException) | Admin CRUD 엔드포인트는 List<T> 배열을 직접 반환하나, 테스트에서 { items: [...] } 페이징 응답을 가정 | JsonElement.ValueKind == Array 체크 후 분기 처리 | 테스트 작성 시 API 컨트롤러의 실제 응답 형식(배열 vs 페이징 객체)을 먼저 확인할 것 |
