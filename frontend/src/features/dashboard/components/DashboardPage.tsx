@@ -238,15 +238,15 @@ export default function DashboardPage() {
                     </Typography>
                   </Box>
                 ) : (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <PieChart>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                       <Pie
                         data={data.issuesByStatus}
                         dataKey="count"
                         nameKey="statusName"
                         cx="50%"
                         cy="50%"
-                        outerRadius={90}
+                        outerRadius={70}
                         label={({ name, value }: { name?: string; value?: number }) =>
                           `${name ?? ''} (${value ?? 0})`
                         }
