@@ -22,6 +22,9 @@ public static class DependencyInjection
         services.AddScoped<IVersionService, VersionService>();
         services.AddScoped<IIssueCategoryService, IssueCategoryService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IIssueRelationService, IssueRelationService>();
+        services.AddScoped<IGanttService, GanttService>();
+        services.AddScoped<ICalendarService, CalendarService>();
 
         return services;
     }

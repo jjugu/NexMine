@@ -33,4 +33,6 @@ public class Issue : BaseEntity
     public List<Issue> Children { get; set; } = [];
     public List<Journal> Journals { get; set; } = [];
     public List<TimeEntry> TimeEntries { get; set; } = [];
+    public ICollection<IssueRelation> RelationsFrom { get; set; } = [];
+    public ICollection<IssueRelation> RelationsTo { get; set; } = [];
 }

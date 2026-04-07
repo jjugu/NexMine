@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Box, Typography, Badge, IconButton, Collapse } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -13,13 +13,15 @@ interface KanbanColumnProps {
   isClosed: boolean;
   issues: KanbanIssue[];
   provided: DroppableProvided;
+  onClickIssue?: (issueId: number) => void;
 }
 
-export default function KanbanColumn({
+export default memo(function KanbanColumn({
   statusName,
   isClosed,
   issues,
   provided,
+  onClickIssue,
 }: KanbanColumnProps) {
   const [expanded, setExpanded] = useState(!isClosed);
 
@@ -115,7 +117,7 @@ export default function KanbanColumn({
               key={issue.id}
             >
               {(dragProvided) => (
-                <KanbanCard issue={issue} provided={dragProvided} />
+                <KanbanCard issue={issue} provided={dragProvided} onClickIssue={onClickIssue} />
               )}
             </Draggable>
           ))}
@@ -138,4 +140,4 @@ export default function KanbanColumn({
       </Collapse>
     </Box>
   );
-}
+});

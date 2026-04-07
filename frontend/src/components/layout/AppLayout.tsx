@@ -39,8 +39,8 @@ function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
   return [
     { label: '이슈', icon: <BugReportIcon />, path: `/projects/${identifier}/issues` },
     { label: '칸반', icon: <ViewKanbanIcon />, path: `/projects/${identifier}/kanban` },
-    { label: '간트', icon: <BarChartIcon />, path: `/projects/${identifier}/gantt`, isDisabled: true },
-    { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar`, isDisabled: true },
+    { label: '간트', icon: <BarChartIcon />, path: `/projects/${identifier}/gantt` },
+    { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar` },
     { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki`, isDisabled: true },
     { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents`, isDisabled: true },
     { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions` },

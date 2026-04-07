@@ -296,6 +296,7 @@ export default function KanbanBoardPage() {
                     isClosed={status.isClosed ?? false}
                     issues={issuesByStatus[status.id ?? 0] ?? []}
                     provided={provided}
+                    onClickIssue={(issueId) => navigate(`/projects/${identifier}/issues/${issueId}`)}
                   />
                 )}
               </Droppable>

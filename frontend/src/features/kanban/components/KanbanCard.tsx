@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { memo } from 'react';
 import {
   Box, Typography, Chip, Avatar, LinearProgress, Card,
 } from '@mui/material';
@@ -29,17 +29,10 @@ function getPriorityBorderColor(priorityName?: string | null): string {
 interface KanbanCardProps {
   issue: KanbanIssue;
   provided: DraggableProvided;
+  onClickIssue?: (issueId: number) => void;
 }
 
-export default function KanbanCard({ issue, provided }: KanbanCardProps) {
-  const navigate = useNavigate();
-  const { identifier } = useParams<{ identifier: string }>();
-
-  function handleClick() {
-    if (identifier) {
-      navigate(`/projects/${identifier}/issues/${issue.id}`);
-    }
-  }
+export default memo(function KanbanCard({ issue, provided, onClickIssue }: KanbanCardProps) {
 
   const avatarLetter = issue.assignedToName
     ? issue.assignedToName[0].toUpperCase()
@@ -51,7 +44,7 @@ export default function KanbanCard({ issue, provided }: KanbanCardProps) {
       {...provided.draggableProps}
       {...provided.dragHandleProps}
       variant="outlined"
-      onClick={handleClick}
+      onClick={() => onClickIssue?.(issue.id)}
       sx={{
         mb: 1,
         cursor: 'pointer',
@@ -122,4 +115,4 @@ export default function KanbanCard({ issue, provided }: KanbanCardProps) {
       </Box>
     </Card>
   );
-}
+});

@@ -23,6 +23,7 @@ public class NexmineDbContext : DbContext
     public DbSet<Journal> Journals => Set<Journal>();
     public DbSet<JournalDetail> JournalDetails => Set<JournalDetail>();
     public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
+    public DbSet<IssueRelation> IssueRelations => Set<IssueRelation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -46,4 +46,5 @@
 
 | 날짜 | 오류 내용 | 원인 | 해결책 | 방지 규칙 |
 |------|-----------|------|--------|-----------|
-| - | - | - | - | - |
+| 2026-04-07 | 간트 바 드래그 시 클릭 판정되어 이슈 상세로 이동 | mouseDown→mouseUp 사이에 이동량 체크 없이 onClick 발생 | 드래그 시작 시 마우스 이동량 추적, 3px 미만 이동만 클릭으로 판정 (wasDragged ref) | 드래그+클릭 공존 시 반드시 이동 임계값(threshold)으로 구분 |
+| 2026-04-07 | 간트 바 드래그 시 버벅거림 | setDragOffset가 매 mousemove마다 React 리렌더링 유발 | 이동(move) 드래그는 CSS translateX로 DOM 직접 조작, mouseUp에서만 React 상태 업데이트 | SVG 드래그는 React state 대신 DOM 직접 조작(transform) 사용, 리사이즈만 state 사용 |

@@ -22,6 +22,8 @@ const IssueDetailPage = lazy(() => import('./features/issues/components/IssueDet
 const VersionListPage = lazy(() => import('./features/issues/components/VersionListPage'));
 const ProjectSettingsPage = lazy(() => import('./features/projects/components/ProjectSettingsPage'));
 const KanbanBoardPage = lazy(() => import('./features/kanban/components/KanbanBoardPage'));
+const GanttChartPage = lazy(() => import('./features/gantt/components/GanttChartPage'));
+const CalendarPage = lazy(() => import('./features/calendar/components/CalendarPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,6 +94,8 @@ export default function App() {
                   <Route path="/projects/:identifier/versions" element={<VersionListPage />} />
                   <Route path="/projects/:identifier/board" element={<KanbanBoardPage />} />
                   <Route path="/projects/:identifier/kanban" element={<KanbanBoardPage />} />
+                  <Route path="/projects/:identifier/gantt" element={<GanttChartPage />} />
+                  <Route path="/projects/:identifier/calendar" element={<CalendarPage />} />
                   <Route path="/projects/:identifier/settings" element={<ProjectSettingsPage />} />
                 </Route>
               </Route>
