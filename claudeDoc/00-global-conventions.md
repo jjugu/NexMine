@@ -90,3 +90,5 @@ scope: auth, project, issue, kanban, gantt, calendar, wiki, docs, api, ui
 |------|-----------|------|--------|-----------|
 | 2026-04-07 | 백엔드 에러 메시지가 영어로 노출 | 서비스 레이어 throw 메시지를 영어로 작성 | 모든 사용자 노출 에러 메시지를 한국어로 변경 | 사용자에게 노출되는 에러 메시지는 반드시 한국어로 작성 |
 | 2026-04-07 | 시간 표시가 UTC(오전 4시)로 나옴, 실제는 KST(오후 1시) | 백엔드 DateTime.UtcNow 저장 시 Z 접미사 없이 직렬화 → 프론트에서 로컬로 오해석 | formatDateTime에서 Z 접미사 추가하여 UTC로 파싱 후 브라우저 자동 변환 | DateTime 문자열은 항상 UTC 여부 확인 후 파싱, DateOnly는 시간대 변환 금지 |
+| 2026-04-07 | 관리자 트래커/우선순위 순서 변경 버튼 무반응 | PUT API 호출 후 목록을 refetch하지 않거나, position 값 업데이트 로직 누락 | position swap 로직 구현 + 성공 후 invalidateQueries | 순서 변경 기능은 API 호출 → 성공 시 목록 refetch 패턴 필수 |
+| 2026-04-07 | 트래커/우선순위 기본(isDefault) 설정 시 중복 허용됨 | 백엔드에서 isDefault=true 설정 시 기존 기본 항목의 isDefault를 false로 해제하지 않음 | 서비스에서 isDefault=true 업데이트 시 다른 항목들의 isDefault를 일괄 false로 변경 | isDefault 같은 단일 선택 플래그는 설정 시 반드시 기존 항목 해제 로직 포함 |

@@ -27,14 +27,19 @@ public class JwtTokenService : IJwtTokenService
 
         var expiryMinutes = int.Parse(_configuration["Jwt:AccessTokenExpiryMinutes"] ?? "15");
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim("isAdmin", user.IsAdmin.ToString().ToLowerInvariant()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.UniqueName, user.Username),
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new("isAdmin", user.IsAdmin.ToString().ToLowerInvariant()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        if (user.IsAdmin)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],

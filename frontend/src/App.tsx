@@ -1,4 +1,4 @@
-import { lazy, Suspense, Component } from 'react';
+import { lazy, Suspense, Component, useMemo } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, CircularProgress, Box, Alert, Typography, Button } from '@mui/material';
@@ -6,10 +6,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/ko';
-import theme from './theme/theme';
+import { createAppTheme } from './theme/theme';
+import { useThemeStore } from './stores/themeStore';
 import AuthLayout from './components/layout/AuthLayout';
 import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import AdminRoute from './components/layout/AdminRoute';
 
 const LoginPage = lazy(() => import('./features/auth/components/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/components/RegisterPage'));
@@ -28,6 +30,16 @@ const WikiIndexPage = lazy(() => import('./features/wiki/components/WikiIndexPag
 const WikiPageEditor = lazy(() => import('./features/wiki/components/WikiPageEditor'));
 const DocumentListPage = lazy(() => import('./features/documents/components/DocumentListPage'));
 const DocumentDetailPage = lazy(() => import('./features/documents/components/DocumentDetailPage'));
+
+// Admin pages
+const AdminUsersPage = lazy(() => import('./features/admin/components/AdminUsersPage'));
+const AdminRolesPage = lazy(() => import('./features/admin/components/AdminRolesPage'));
+const AdminTrackersPage = lazy(() => import('./features/admin/components/AdminTrackersPage'));
+const AdminStatusesPage = lazy(() => import('./features/admin/components/AdminStatusesPage'));
+const AdminPrioritiesPage = lazy(() => import('./features/admin/components/AdminPrioritiesPage'));
+
+// Search
+const SearchResultsPage = lazy(() => import('./features/search/components/SearchResultsPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,54 +82,75 @@ function Loading() {
   );
 }
 
+function AppContent() {
+  const { mode } = useThemeStore();
+  const theme = useMemo(() => createAppTheme(mode), [mode]);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ko">
+      <BrowserRouter>
+        <ErrorBoundary>
+        <Suspense fallback={<Loading />}>
+          <Routes>
+            {/* Auth routes */}
+            <Route element={<AuthLayout />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+            </Route>
+
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/projects" element={<ProjectListPage />} />
+                <Route path="/projects/:identifier" element={<ProjectDetailPage />} />
+                <Route path="/projects/:identifier/issues" element={<IssueListPage />} />
+                <Route path="/projects/:identifier/issues/new" element={<IssueCreatePage />} />
+                <Route path="/projects/:identifier/issues/:id" element={<IssueDetailPage />} />
+                <Route path="/projects/:identifier/versions" element={<VersionListPage />} />
+                <Route path="/projects/:identifier/board" element={<KanbanBoardPage />} />
+                <Route path="/projects/:identifier/kanban" element={<KanbanBoardPage />} />
+                <Route path="/projects/:identifier/gantt" element={<GanttChartPage />} />
+                <Route path="/projects/:identifier/calendar" element={<CalendarPage />} />
+                <Route path="/projects/:identifier/wiki" element={<WikiIndexPage />} />
+                <Route path="/projects/:identifier/wiki/new" element={<WikiPageEditor />} />
+                <Route path="/projects/:identifier/wiki/:slug" element={<WikiIndexPage />} />
+                <Route path="/projects/:identifier/wiki/:slug/edit" element={<WikiPageEditor />} />
+                <Route path="/projects/:identifier/documents" element={<DocumentListPage />} />
+                <Route path="/projects/:identifier/documents/:id" element={<DocumentDetailPage />} />
+                <Route path="/projects/:identifier/settings" element={<ProjectSettingsPage />} />
+
+                {/* Search */}
+                <Route path="/search" element={<SearchResultsPage />} />
+
+                {/* Admin routes - protected by AdminRoute */}
+                <Route element={<AdminRoute />}>
+                  <Route path="/admin/users" element={<AdminUsersPage />} />
+                  <Route path="/admin/roles" element={<AdminRolesPage />} />
+                  <Route path="/admin/trackers" element={<AdminTrackersPage />} />
+                  <Route path="/admin/statuses" element={<AdminStatusesPage />} />
+                  <Route path="/admin/priorities" element={<AdminPrioritiesPage />} />
+                </Route>
+              </Route>
+            </Route>
+
+            {/* Default redirect */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Suspense>
+        </ErrorBoundary>
+      </BrowserRouter>
+      </LocalizationProvider>
+    </ThemeProvider>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ko">
-        <BrowserRouter>
-          <ErrorBoundary>
-          <Suspense fallback={<Loading />}>
-            <Routes>
-              {/* Auth routes */}
-              <Route element={<AuthLayout />}>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-              </Route>
-
-              {/* Protected routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AppLayout />}>
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/projects" element={<ProjectListPage />} />
-                  <Route path="/projects/:identifier" element={<ProjectDetailPage />} />
-                  <Route path="/projects/:identifier/issues" element={<IssueListPage />} />
-                  <Route path="/projects/:identifier/issues/new" element={<IssueCreatePage />} />
-                  <Route path="/projects/:identifier/issues/:id" element={<IssueDetailPage />} />
-                  <Route path="/projects/:identifier/versions" element={<VersionListPage />} />
-                  <Route path="/projects/:identifier/board" element={<KanbanBoardPage />} />
-                  <Route path="/projects/:identifier/kanban" element={<KanbanBoardPage />} />
-                  <Route path="/projects/:identifier/gantt" element={<GanttChartPage />} />
-                  <Route path="/projects/:identifier/calendar" element={<CalendarPage />} />
-                  <Route path="/projects/:identifier/wiki" element={<WikiIndexPage />} />
-                  <Route path="/projects/:identifier/wiki/new" element={<WikiPageEditor />} />
-                  <Route path="/projects/:identifier/wiki/:slug" element={<WikiIndexPage />} />
-                  <Route path="/projects/:identifier/wiki/:slug/edit" element={<WikiPageEditor />} />
-                  <Route path="/projects/:identifier/documents" element={<DocumentListPage />} />
-                  <Route path="/projects/:identifier/documents/:id" element={<DocumentDetailPage />} />
-                  <Route path="/projects/:identifier/settings" element={<ProjectSettingsPage />} />
-                </Route>
-              </Route>
-
-              {/* Default redirect */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </Suspense>
-          </ErrorBoundary>
-        </BrowserRouter>
-        </LocalizationProvider>
-      </ThemeProvider>
+      <AppContent />
     </QueryClientProvider>
   );
 }

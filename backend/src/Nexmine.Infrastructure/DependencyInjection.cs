@@ -1,9 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
+using Nexmine.Application.Features.Admin.Interfaces;
 using Nexmine.Application.Features.Auth.Interfaces;
 using Nexmine.Application.Features.Dashboard.Interfaces;
 using Nexmine.Application.Features.Documents.Interfaces;
 using Nexmine.Application.Features.Issues.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
+using Nexmine.Application.Features.Search.Interfaces;
 using Nexmine.Application.Features.Wiki.Interfaces;
 using Nexmine.Infrastructure.Services;
 
@@ -31,6 +33,16 @@ public static class DependencyInjection
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IAttachmentService, AttachmentService>();
         services.AddSingleton<IFileStorageService>(_ => new FileStorageService(uploadsPath));
+
+        // Admin services
+        services.AddScoped<IAdminUserService, AdminUserService>();
+        services.AddScoped<IAdminRoleService, AdminRoleService>();
+        services.AddScoped<IAdminTrackerService, AdminTrackerService>();
+        services.AddScoped<IAdminStatusService, AdminStatusService>();
+        services.AddScoped<IAdminPriorityService, AdminPriorityService>();
+
+        // Search service
+        services.AddScoped<ISearchService, SearchService>();
 
         return services;
     }
