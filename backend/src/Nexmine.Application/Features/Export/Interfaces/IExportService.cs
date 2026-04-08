@@ -9,4 +9,5 @@ public interface IExportService
     Task<byte[]> ExportTimeReportToCsvAsync(TimeReportFilterParams filter);
     Task<byte[]> ExportIssueToPdfAsync(int issueId);
     Task<byte[]> ExportIssueListToPdfAsync(string projectIdentifier, IssueFilterParams filter);
+    Task<byte[]> ExportGanttToPdfAsync(string projectIdentifier, string viewMode);
 }

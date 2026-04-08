@@ -54,4 +54,17 @@ public class ExportController : ControllerBase
         var fileName = $"issues_{DateTime.UtcNow:yyyy-MM-dd}.pdf";
         return File(pdf, "application/pdf", fileName);
     }
+
+    [HttpGet("projects/{identifier}/gantt/export/pdf")]
+    [ProjectMember]
+    [Produces("application/pdf")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ExportGanttPdfAsync(string identifier, [FromQuery] string viewMode = "day")
+    {
+        var pdf = await _exportService.ExportGanttToPdfAsync(identifier, viewMode);
+        var fileName = $"gantt_{identifier}_{DateTime.UtcNow:yyyy-MM-dd}.pdf";
+        return File(pdf, "application/pdf", fileName);
+    }
 }

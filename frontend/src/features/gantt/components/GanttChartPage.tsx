@@ -1,18 +1,18 @@
-import { useMemo, useCallback, useRef } from 'react';
+import { useMemo, useCallback, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Breadcrumbs, Link, Button, ButtonGroup,
-  Skeleton, Alert,
+  Skeleton, Alert, CircularProgress,
 } from '@mui/material';
 import TodayIcon from '@mui/icons-material/Today';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import dayjs from 'dayjs';
 import axiosInstance from '../../../api/axiosInstance';
 import GanttChart from './GanttChart';
 import type { ViewMode } from './GanttChart';
 import type { GanttIssue } from './GanttBar';
-import { useState } from 'react';
 
 interface ProjectDto {
   id?: number;
@@ -37,6 +37,7 @@ export default function GanttChartPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('day');
+  const [isExporting, setExporting] = useState(false);
   const todayRef = useRef<HTMLDivElement>(null);
 
   const projectQuery = useQuery({
@@ -96,6 +97,28 @@ export default function GanttChartPage() {
   const handleRefresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['gantt', identifier] });
   }, [identifier, queryClient]);
+
+  const handleExportPdf = useCallback(async () => {
+    setExporting(true);
+    try {
+      const response = await axiosInstance.get(
+        `/projects/${identifier}/gantt/export/pdf`,
+        { params: { viewMode }, responseType: 'blob' },
+      );
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], { type: 'application/pdf' }),
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `gantt_${identifier}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Error is silently handled; the user sees the button stop loading
+    } finally {
+      setExporting(false);
+    }
+  }, [identifier, viewMode]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -172,6 +195,16 @@ export default function GanttChartPage() {
               size="small"
             >
               새로고침
+            </Button>
+
+            <Button
+              variant="outlined"
+              startIcon={isExporting ? <CircularProgress size={16} /> : <PictureAsPdfIcon />}
+              onClick={handleExportPdf}
+              size="small"
+              disabled={isExporting || filteredIssues.length === 0}
+            >
+              PDF
             </Button>
           </Box>
         </Box>

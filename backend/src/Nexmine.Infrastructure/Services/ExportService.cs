@@ -381,6 +381,263 @@ public class ExportService : IExportService
         return document.GeneratePdf();
     }
 
+    public async Task<byte[]> ExportGanttToPdfAsync(string projectIdentifier, string viewMode)
+    {
+        var project = await _dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Identifier == projectIdentifier)
+            ?? throw new KeyNotFoundException($"프로젝트 '{projectIdentifier}'를 찾을 수 없습니다.");
+
+        var issues = await _dbContext.Issues
+            .Include(i => i.Tracker)
+            .Include(i => i.Status)
+            .Include(i => i.Priority)
+            .Include(i => i.AssignedTo)
+            .Where(i => i.ProjectId == project.Id)
+            .Where(i => i.StartDate != null && i.DueDate != null)
+            .OrderBy(i => i.StartDate)
+            .ThenBy(i => i.Id)
+            .Take(MaxExportRows)
+            .ToListAsync();
+
+        if (issues.Count == 0)
+        {
+            throw new InvalidOperationException("내보낼 간트 이슈가 없습니다. 시작일과 종료일이 설정된 이슈가 필요합니다.");
+        }
+
+        var minDate = issues.Min(i => i.StartDate!.Value);
+        var maxDate = issues.Max(i => i.DueDate!.Value);
+        // Add 1 week padding on each side
+        var chartStart = minDate.AddDays(-7);
+        var chartEnd = maxDate.AddDays(7);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var totalDays = chartEnd.DayNumber - chartStart.DayNumber + 1;
+
+        // Tracker colors
+        var trackerColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Bug"] = Color.FromHex("#ef5350"),
+            ["Feature"] = Color.FromHex("#42a5f5"),
+            ["Task"] = Color.FromHex("#66bb6a"),
+            ["Support"] = Color.FromHex("#ffa726"),
+        };
+        var defaultBarColor = Color.FromHex("#90a4ae");
+        var progressBarColor = Color.FromHex("#1b5e20");
+
+        // Build date columns for the gantt chart table
+        var dateColumns = BuildDateColumns(chartStart, chartEnd, viewMode);
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A3.Landscape());
+                page.MarginHorizontal(20);
+                page.MarginVertical(15);
+                page.DefaultTextStyle(x => x.FontSize(8));
+
+                page.Header().Column(col =>
+                {
+                    col.Item().Text($"{project.Name} - 간트 차트").FontSize(14).Bold();
+                    col.Item().Text($"생성일: {DateTime.UtcNow:yyyy-MM-dd} / {issues.Count}건 / 뷰: {viewMode}")
+                        .FontSize(8);
+                    col.Item().PaddingBottom(5);
+                });
+
+                page.Content().Table(table =>
+                {
+                    // Define columns: # | Subject | Assignee | Duration | [date columns...]
+                    table.ColumnsDefinition(columns =>
+                    {
+                        columns.ConstantColumn(30);   // #
+                        columns.ConstantColumn(130);  // Subject
+                        columns.ConstantColumn(60);   // Assignee
+                        columns.ConstantColumn(40);   // Duration
+                        foreach (var _ in dateColumns)
+                        {
+                            columns.ConstantColumn(dateColumns.Count > 60 ? 8 : dateColumns.Count > 30 ? 12 : 18);
+                        }
+                    });
+
+                    // Header row
+                    table.Header(header =>
+                    {
+                        header.Cell().Background(Colors.Grey.Lighten2).Padding(2).AlignMiddle().Text("#").Bold().FontSize(7);
+                        header.Cell().Background(Colors.Grey.Lighten2).Padding(2).AlignMiddle().Text("제목").Bold().FontSize(7);
+                        header.Cell().Background(Colors.Grey.Lighten2).Padding(2).AlignMiddle().Text("담당자").Bold().FontSize(7);
+                        header.Cell().Background(Colors.Grey.Lighten2).Padding(2).AlignMiddle().Text("기간").Bold().FontSize(7);
+
+                        foreach (var dc in dateColumns)
+                        {
+                            var bgColor = dc.IsToday ? Color.FromHex("#ffcdd2") :
+                                          dc.IsWeekend ? Colors.Grey.Lighten3 :
+                                          Colors.Grey.Lighten2;
+
+                            header.Cell().Background(bgColor).Padding(1).AlignMiddle().AlignCenter()
+                                .Text(dc.Label).FontSize(5);
+                        }
+                    });
+
+                    // Data rows
+                    foreach (var issue in issues)
+                    {
+                        var assignee = issue.AssignedTo is not null
+                            ? FormatUserName(issue.AssignedTo)
+                            : "-";
+                        var subject = issue.Subject.Length > 25
+                            ? issue.Subject[..25] + "..."
+                            : issue.Subject;
+                        var durationDays = issue.DueDate!.Value.DayNumber - issue.StartDate!.Value.DayNumber + 1;
+
+                        var trackerName = issue.Tracker?.Name ?? "";
+                        var barColor = trackerColors.GetValueOrDefault(trackerName, defaultBarColor);
+
+                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(2).AlignMiddle()
+                            .Text(issue.Id.ToString()).FontSize(7);
+                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(2).AlignMiddle()
+                            .Text(subject).FontSize(7);
+                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(2).AlignMiddle()
+                            .Text(assignee).FontSize(7);
+                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(2).AlignMiddle()
+                            .Text($"{durationDays}일").FontSize(7);
+
+                        // Gantt bar cells
+                        foreach (var dc in dateColumns)
+                        {
+                            var cell = table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2);
+
+                            var isInRange = dc.StartDate <= issue.DueDate!.Value && dc.EndDate >= issue.StartDate!.Value;
+
+                            if (isInRange)
+                            {
+                                // Calculate progress within this cell
+                                var cellDays = dc.EndDate.DayNumber - dc.StartDate.DayNumber + 1;
+                                var overlapStart = dc.StartDate > issue.StartDate.Value ? dc.StartDate : issue.StartDate.Value;
+                                var overlapEnd = dc.EndDate < issue.DueDate.Value ? dc.EndDate : issue.DueDate.Value;
+
+                                if (issue.DoneRatio > 0)
+                                {
+                                    // Show bar with progress
+                                    cell.Column(barCol =>
+                                    {
+                                        barCol.Item().Height(10).Background(barColor);
+                                        barCol.Item().Height(4).Row(progressRow =>
+                                        {
+                                            if (issue.DoneRatio > 0)
+                                            {
+                                                progressRow.RelativeItem(issue.DoneRatio).Background(progressBarColor);
+                                            }
+                                            if (issue.DoneRatio < 100)
+                                            {
+                                                progressRow.RelativeItem(100 - issue.DoneRatio).Background(Colors.Grey.Lighten2);
+                                            }
+                                        });
+                                    });
+                                }
+                                else
+                                {
+                                    cell.Height(14).Background(barColor);
+                                }
+                            }
+                            else if (dc.IsToday)
+                            {
+                                cell.Height(14).BorderLeft(1).BorderColor(Color.FromHex("#f44336"));
+                            }
+                            else if (dc.IsWeekend)
+                            {
+                                cell.Height(14).Background(Colors.Grey.Lighten4);
+                            }
+                            else
+                            {
+                                cell.Height(14);
+                            }
+                        }
+                    }
+                });
+
+                page.Footer().AlignCenter().Text(text =>
+                {
+                    text.Span("Nexmine - ");
+                    text.CurrentPageNumber();
+                    text.Span(" / ");
+                    text.TotalPages();
+                });
+            });
+        });
+
+        return document.GeneratePdf();
+    }
+
+    private static List<GanttDateColumn> BuildDateColumns(DateOnly chartStart, DateOnly chartEnd, string viewMode)
+    {
+        var columns = new List<GanttDateColumn>();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        if (viewMode == "week")
+        {
+            // Align to Monday
+            var d = chartStart;
+            while (d.DayOfWeek != DayOfWeek.Monday)
+                d = d.AddDays(-1);
+
+            while (d <= chartEnd)
+            {
+                var weekEnd = d.AddDays(6);
+                var weekNum = System.Globalization.ISOWeek.GetWeekOfYear(d.ToDateTime(TimeOnly.MinValue));
+                columns.Add(new GanttDateColumn
+                {
+                    Label = $"W{weekNum}",
+                    StartDate = d,
+                    EndDate = weekEnd,
+                    IsToday = today >= d && today <= weekEnd,
+                    IsWeekend = false,
+                });
+                d = d.AddDays(7);
+            }
+        }
+        else if (viewMode == "month")
+        {
+            var d = new DateOnly(chartStart.Year, chartStart.Month, 1);
+            while (d <= chartEnd)
+            {
+                var monthEnd = d.AddMonths(1).AddDays(-1);
+                columns.Add(new GanttDateColumn
+                {
+                    Label = d.ToString("yy/M"),
+                    StartDate = d,
+                    EndDate = monthEnd,
+                    IsToday = today >= d && today <= monthEnd,
+                    IsWeekend = false,
+                });
+                d = d.AddMonths(1);
+            }
+        }
+        else // day
+        {
+            for (var d = chartStart; d <= chartEnd; d = d.AddDays(1))
+            {
+                columns.Add(new GanttDateColumn
+                {
+                    Label = d.ToString("d"),
+                    StartDate = d,
+                    EndDate = d,
+                    IsToday = d == today,
+                    IsWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday,
+                });
+            }
+        }
+
+        return columns;
+    }
+
+    private sealed class GanttDateColumn
+    {
+        public required string Label { get; init; }
+        public required DateOnly StartDate { get; init; }
+        public required DateOnly EndDate { get; init; }
+        public required bool IsToday { get; init; }
+        public required bool IsWeekend { get; init; }
+    }
+
     private static void AddMetaRow(TableDescriptor table, string label1, string value1, string label2, string value2)
     {
         table.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(label1).Bold().FontSize(9);
