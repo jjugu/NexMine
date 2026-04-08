@@ -37,6 +37,9 @@ public class NexmineDbContext : DbContext
     public DbSet<UserDashboardWidget> UserDashboardWidgets => Set<UserDashboardWidget>();
     public DbSet<News> News => Set<News>();
     public DbSet<IssueTemplate> IssueTemplates => Set<IssueTemplate>();
+    public DbSet<UserGroup> UserGroups => Set<UserGroup>();
+    public DbSet<UserGroupMember> UserGroupMembers => Set<UserGroupMember>();
+    public DbSet<SavedQuery> SavedQueries => Set<SavedQuery>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -9,6 +9,7 @@ import {
   MenuItem, Select, FormControl, InputLabel, IconButton,
   Breadcrumbs, Link, Collapse, LinearProgress, TableSortLabel,
   CircularProgress, Tooltip, Checkbox, Snackbar, Alert,
+  Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Switch,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -17,9 +18,12 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import DownloadIcon from '@mui/icons-material/Download';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import CloseIcon from '@mui/icons-material/Close';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import { QueryState, TableSkeleton, CardSkeleton } from '../../../components/common/QueryState';
 import axiosInstance from '../../../api/axiosInstance';
-import type { IssueDtoPagedResult, ProjectDto, BulkUpdateIssuesRequest } from '../../../api/generated/model';
+import type { IssueDtoPagedResult, ProjectDto, BulkUpdateIssuesRequest, SavedQueryDto } from '../../../api/generated/model';
+import { useAuthStore } from '../../../stores/authStore';
 import {
   useTrackers,
   useIssueStatuses,
@@ -79,6 +83,12 @@ export default function IssueListPage() {
   const [searchInput, setSearchInput] = useState(searchFromUrl);
   const [isExporting, setIsExporting] = useState(false);
 
+  // Saved filter state
+  const [saveFilterOpen, setSaveFilterOpen] = useState(false);
+  const [saveFilterName, setSaveFilterName] = useState('');
+  const [saveFilterPublic, setSaveFilterPublic] = useState(false);
+  const { user } = useAuthStore();
+
   // Bulk update mutation
   const bulkUpdateMutation = useMutation({
     mutationFn: (data: BulkUpdateIssuesRequest) =>
@@ -110,6 +120,69 @@ export default function IssueListPage() {
     enabled: !!identifier,
     staleTime: 5 * 60 * 1000,
   });
+
+  const projectId = projectQuery.data?.id;
+
+  // Saved queries
+  const savedQueriesQuery = useQuery({
+    queryKey: ['saved-queries', projectId],
+    queryFn: () =>
+      axiosInstance
+        .get<SavedQueryDto[]>('/saved-queries', { params: { projectId } })
+        .then((res) => res.data),
+    enabled: !!projectId,
+  });
+
+  const savedQueries = savedQueriesQuery.data ?? [];
+
+  const saveFilterMutation = useMutation({
+    mutationFn: (data: { projectId?: number | null; name: string; filters: Record<string, string>; isPublic: boolean }) =>
+      axiosInstance.post('/saved-queries', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saved-queries'] });
+      setSaveFilterOpen(false);
+      setSaveFilterName('');
+      setSaveFilterPublic(false);
+      setSnackbar({ open: true, message: '필터가 저장되었습니다.', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: '필터 저장에 실패했습니다.', severity: 'error' });
+    },
+  });
+
+  const deleteFilterMutation = useMutation({
+    mutationFn: (id: number) => axiosInstance.delete(`/saved-queries/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saved-queries'] });
+      setSnackbar({ open: true, message: '필터가 삭제되었습니다.', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: '필터 삭제에 실패했습니다.', severity: 'error' });
+    },
+  });
+
+  function handleSaveFilter() {
+    if (!saveFilterName.trim()) return;
+    const filters: Record<string, string> = {};
+    if (searchFromUrl) filters.search = searchFromUrl;
+    if (trackerIdFilter) filters.trackerId = trackerIdFilter;
+    if (statusIdFilter) filters.statusId = statusIdFilter;
+    if (priorityIdFilter) filters.priorityId = priorityIdFilter;
+    if (assignedToIdFilter) filters.assignedToId = assignedToIdFilter;
+    saveFilterMutation.mutate({
+      projectId: projectId ?? null,
+      name: saveFilterName.trim(),
+      filters,
+      isPublic: saveFilterPublic,
+    });
+  }
+
+  function handleApplyFilter(filters: Record<string, string> | null | undefined) {
+    if (!filters) return;
+    const params = new URLSearchParams(filters);
+    params.set('page', '1');
+    setSearchParams(params, { replace: true });
+  }
 
   // Debounced search
   useEffect(() => {
@@ -327,6 +400,13 @@ export default function IssueListPage() {
                 </IconButton>
               </span>
             </Tooltip>
+            <Tooltip title="필터 저장">
+              <IconButton
+                onClick={() => setSaveFilterOpen(true)}
+              >
+                <BookmarkBorderIcon />
+              </IconButton>
+            </Tooltip>
             <IconButton
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               color={isFilterOpen ? 'primary' : 'default'}
@@ -339,6 +419,28 @@ export default function IssueListPage() {
           </Box>
         </Box>
       </Box>
+
+      {/* Saved filters */}
+      {savedQueries.length > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5, alignItems: 'center' }}>
+          <BookmarkIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />
+          {savedQueries.map((sq) => (
+            <Chip
+              key={sq.id}
+              label={sq.isPublic ? `${sq.name} (${sq.userName ?? ''})` : sq.name}
+              size="small"
+              variant="outlined"
+              color={sq.isPublic ? 'default' : 'primary'}
+              onClick={() => handleApplyFilter(sq.filters)}
+              onDelete={
+                sq.userId === user?.id
+                  ? () => { if (sq.id != null) deleteFilterMutation.mutate(sq.id); }
+                  : undefined
+              }
+            />
+          ))}
+        </Box>
+      )}
 
       {/* Filter panel */}
       <Collapse in={isFilterOpen}>
@@ -709,7 +811,42 @@ export default function IssueListPage() {
         )}
       </QueryState>
 
-      {/* Snackbar for bulk update feedback */}
+      {/* Save filter dialog */}
+      <Dialog open={saveFilterOpen} onClose={() => setSaveFilterOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>필터 저장</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="필터 이름"
+              required
+              value={saveFilterName}
+              onChange={(e) => setSaveFilterName(e.target.value)}
+              autoFocus
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={saveFilterPublic}
+                  onChange={(e) => setSaveFilterPublic(e.target.checked)}
+                />
+              }
+              label="공개 필터 (다른 사용자에게도 표시)"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveFilterOpen(false)}>취소</Button>
+          <Button
+            variant="contained"
+            disabled={!saveFilterName.trim() || saveFilterMutation.isPending}
+            onClick={handleSaveFilter}
+          >
+            {saveFilterMutation.isPending ? '저장 중...' : '저장'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for feedback */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}

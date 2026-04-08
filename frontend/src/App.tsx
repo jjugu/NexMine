@@ -41,6 +41,7 @@ const AdminPrioritiesPage = lazy(() => import('./features/admin/components/Admin
 const AdminCustomFieldsPage = lazy(() => import('./features/admin/components/AdminCustomFieldsPage'));
 const AdminWorkflowsPage = lazy(() => import('./features/admin/components/AdminWorkflowsPage'));
 const AdminIssueTemplatesPage = lazy(() => import('./features/admin/components/AdminIssueTemplatesPage'));
+const AdminGroupsPage = lazy(() => import('./features/admin/components/AdminGroupsPage'));
 
 // Search
 const SearchResultsPage = lazy(() => import('./features/search/components/SearchResultsPage'));
@@ -161,6 +162,7 @@ function AppContent() {
                   <Route path="/admin/custom-fields" element={<AdminCustomFieldsPage />} />
                   <Route path="/admin/workflows" element={<AdminWorkflowsPage />} />
                   <Route path="/admin/issue-templates" element={<AdminIssueTemplatesPage />} />
+                  <Route path="/admin/groups" element={<AdminGroupsPage />} />
                 </Route>
               </Route>
             </Route>

@@ -6,6 +6,7 @@ using Nexmine.Application.Features.CustomFields.Interfaces;
 using Nexmine.Application.Features.Dashboard.Interfaces;
 using Nexmine.Application.Features.Documents.Interfaces;
 using Nexmine.Application.Features.Export.Interfaces;
+using Nexmine.Application.Features.Groups.Interfaces;
 using Nexmine.Application.Features.Issues.Interfaces;
 using Nexmine.Application.Features.IssueTemplates.Interfaces;
 using Nexmine.Application.Features.MyPage.Interfaces;
@@ -13,6 +14,7 @@ using Nexmine.Application.Features.News.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
 using Nexmine.Application.Features.Reports.Interfaces;
 using Nexmine.Application.Features.Roadmap.Interfaces;
+using Nexmine.Application.Features.SavedQueries.Interfaces;
 using Nexmine.Application.Features.Search.Interfaces;
 using Nexmine.Application.Features.Watchers.Interfaces;
 using Nexmine.Application.Features.Wiki.Interfaces;
@@ -79,6 +81,12 @@ public static class DependencyInjection
 
         // Issue Templates
         services.AddScoped<IIssueTemplateService, IssueTemplateService>();
+
+        // Groups
+        services.AddScoped<IUserGroupService, UserGroupService>();
+
+        // Saved Queries
+        services.AddScoped<ISavedQueryService, SavedQueryService>();
 
         return services;
     }

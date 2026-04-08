@@ -39,10 +39,13 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
-import { useIsFetching } from '@tanstack/react-query';
+import GroupIcon from '@mui/icons-material/Group';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import { useIsFetching, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import axiosInstance from '../../api/axiosInstance';
+import type { SavedQueryDto, ProjectDto } from '../../api/generated/model';
 
 const DRAWER_WIDTH = 240;
 const DRAWER_COLLAPSED_WIDTH = 56;
@@ -64,6 +67,7 @@ const adminNavItems = [
   { label: '커스텀 필드', icon: <TuneIcon />, path: '/admin/custom-fields' },
   { label: '워크플로우', icon: <AccountTreeIcon />, path: '/admin/workflows' },
   { label: '이슈 템플릿', icon: <ContentPasteIcon />, path: '/admin/issue-templates' },
+  { label: '그룹', icon: <GroupIcon />, path: '/admin/groups' },
 ];
 
 interface ProjectSubNavItem {
@@ -111,6 +115,31 @@ export default function AppLayout() {
   const isProjectContext = projectMatch && projectMatch[1] !== 'undefined';
   const projectIdentifier = isProjectContext ? params.identifier ?? projectMatch[1] : null;
   const projectSubNav = projectIdentifier ? getProjectSubNav(projectIdentifier) : [];
+
+  // Fetch project info to get projectId for saved queries
+  const projectInfoQuery = useQuery({
+    queryKey: ['project', projectIdentifier],
+    queryFn: () =>
+      axiosInstance
+        .get<ProjectDto>(`/Projects/${projectIdentifier}`)
+        .then((res) => res.data),
+    enabled: !!projectIdentifier,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const projectId = projectInfoQuery.data?.id;
+
+  // Fetch saved queries for the current project
+  const savedQueriesQuery = useQuery({
+    queryKey: ['saved-queries', projectId],
+    queryFn: () =>
+      axiosInstance
+        .get<SavedQueryDto[]>('/saved-queries', { params: { projectId } })
+        .then((res) => res.data),
+    enabled: !!projectId,
+  });
+
+  const savedQueries = savedQueriesQuery.data ?? [];
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -255,6 +284,43 @@ export default function AppLayout() {
               </ListItemButton>
               </Tooltip>
             ))}
+
+            {/* Saved queries for the project */}
+            {sidebarOpen && savedQueries.length > 0 && (
+              <>
+                <Divider sx={{ my: 1 }} />
+                <ListItemButton disabled sx={{ borderRadius: 1, mb: 0.5, py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <BookmarkIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="저장된 필터"
+                    primaryTypographyProps={{ variant: 'caption', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}
+                  />
+                </ListItemButton>
+                {savedQueries.map((sq) => {
+                  const filterParams = new URLSearchParams(sq.filters ?? {});
+                  filterParams.set('page', '1');
+                  const filterPath = `/projects/${projectIdentifier}/issues?${filterParams.toString()}`;
+                  return (
+                    <Tooltip title={sq.isPublic ? `${sq.userName ?? ''} (공개)` : ''} placement="right" key={sq.id}>
+                      <ListItemButton
+                        onClick={() => {
+                          navigate(filterPath);
+                          if (isMobile) setMobileOpen(false);
+                        }}
+                        sx={{ borderRadius: 1, mb: 0.5, pl: 3, py: 0.25 }}
+                      >
+                        <ListItemText
+                          primary={sq.name}
+                          primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                        />
+                      </ListItemButton>
+                    </Tooltip>
+                  );
+                })}
+              </>
+            )}
           </>
         )}
 
