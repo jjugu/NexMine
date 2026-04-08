@@ -289,7 +289,7 @@ export default function GanttChart({
             alignItems: 'center',
             borderBottom: '1px solid',
             borderColor: 'divider',
-            bgcolor: 'grey.50',
+            bgcolor: 'background.default',
             position: 'sticky',
             top: 0,
             zIndex: 2,
@@ -379,7 +379,7 @@ export default function GanttChart({
               y={0}
               width={Math.max(totalWidth, 800)}
               height={HEADER_HEIGHT}
-              fill={muiTheme.palette.grey[50]}
+              fill={muiTheme.palette.background.default}
             />
             {/* Column headers and vertical lines */}
             {(() => {
@@ -398,7 +398,7 @@ export default function GanttChart({
                         y={HEADER_HEIGHT}
                         width={col.width}
                         height={totalHeight}
-                        fill={muiTheme.palette.grey[100]}
+                        fill={muiTheme.palette.action.hover}
                         opacity={0.5}
                       />
                     )}

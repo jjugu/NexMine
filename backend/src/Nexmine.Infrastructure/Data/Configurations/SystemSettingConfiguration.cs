@@ -15,7 +15,6 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             .HasMaxLength(100);
 
         builder.Property(e => e.Value)
-            .IsRequired()
             .HasMaxLength(1000);
 
         builder.HasIndex(e => e.Key)

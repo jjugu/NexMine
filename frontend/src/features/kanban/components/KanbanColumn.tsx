@@ -33,7 +33,7 @@ export default memo(function KanbanColumn({
         minWidth: !expanded ? 60 : 280,
         width: !expanded ? 60 : 280,
         flexShrink: 0,
-        bgcolor: 'grey.100',
+        bgcolor: 'action.hover',
         borderRadius: 2,
         display: 'flex',
         flexDirection: 'column',

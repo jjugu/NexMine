@@ -80,13 +80,17 @@ export default function AdminSettingsPage() {
     saveMutation.mutate({ key: 'registration_mode', value: registrationMode });
   }
 
-  function handleSaveAppSettings() {
-    const saves = [
-      { key: 'app_name', value: appName },
-      { key: 'app_description', value: appDescription },
-      { key: 'session_timeout_minutes', value: sessionTimeout },
-    ];
-    saves.forEach((s) => saveMutation.mutate(s));
+  async function handleSaveAppSettings() {
+    try {
+      await axiosInstance.put('/admin/settings', { key: 'app_name', value: appName });
+      await axiosInstance.put('/admin/settings', { key: 'app_description', value: appDescription });
+      await axiosInstance.put('/admin/settings', { key: 'session_timeout_minutes', value: sessionTimeout });
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] });
+      setSnackbar({ open: true, message: '설정이 저장되었습니다.', severity: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: '설정 저장에 실패했습니다.', severity: 'error' });
+    }
   }
 
   if (isLoading) {
@@ -329,12 +333,16 @@ export default function AdminSettingsPage() {
             <Button
               variant="contained"
               startIcon={saveMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-              onClick={() => {
-                const saves = [
-                  { key: 'primary_color', value: primaryColor },
-                  { key: 'logo_url', value: logoUrl },
-                ];
-                saves.forEach((s) => saveMutation.mutate(s));
+              onClick={async () => {
+                try {
+                  await axiosInstance.put('/admin/settings', { key: 'primary_color', value: primaryColor });
+                  await axiosInstance.put('/admin/settings', { key: 'logo_url', value: logoUrl });
+                  queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+                  queryClient.invalidateQueries({ queryKey: ['app-settings'] });
+                  setSnackbar({ open: true, message: '테마가 저장되었습니다.', severity: 'success' });
+                } catch {
+                  setSnackbar({ open: true, message: '테마 저장에 실패했습니다.', severity: 'error' });
+                }
               }}
               disabled={saveMutation.isPending}
             >

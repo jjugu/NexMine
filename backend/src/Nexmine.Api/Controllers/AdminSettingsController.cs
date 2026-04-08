@@ -41,17 +41,7 @@ public class AdminSettingsController : ControllerBase
             });
         }
 
-        if (string.IsNullOrWhiteSpace(request.Value))
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Validation Error",
-                Detail = "설정 값은 필수입니다."
-            });
-        }
-
-        await _systemSettingService.SetAsync(request.Key, request.Value);
+        await _systemSettingService.SetAsync(request.Key, request.Value ?? "");
         return Ok();
     }
 }

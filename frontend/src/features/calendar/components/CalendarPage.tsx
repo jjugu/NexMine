@@ -303,6 +303,7 @@ export default function CalendarPage() {
           },
           '& .fc-toolbar-title': {
             fontSize: { xs: '1rem', sm: '1.25rem' },
+            color: 'text.primary',
           },
           '& .fc-button': {
             textTransform: 'none',
@@ -319,7 +320,23 @@ export default function CalendarPage() {
             textOverflow: 'ellipsis',
           },
           '& .fc-day-today': {
-            bgcolor: 'rgba(25, 118, 210, 0.04) !important',
+            bgcolor: 'rgba(25, 118, 210, 0.08) !important',
+          },
+          // Dark mode overrides for FullCalendar
+          '& .fc-theme-standard td, & .fc-theme-standard th': {
+            borderColor: 'divider',
+          },
+          '& .fc-theme-standard .fc-scrollgrid': {
+            borderColor: 'divider',
+          },
+          '& .fc-col-header-cell': {
+            bgcolor: 'background.paper',
+          },
+          '& .fc-col-header-cell-cushion, & .fc-daygrid-day-number': {
+            color: 'text.primary',
+          },
+          '& .fc-daygrid-day': {
+            bgcolor: 'background.default',
           },
         }}
       >
