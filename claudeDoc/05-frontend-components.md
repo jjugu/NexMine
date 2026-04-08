@@ -150,3 +150,4 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 | 2026-04-07 | MUI TextField shrink 미동작 — setValue로 값 넣을 때 라벨과 값 겹침 | react-hook-form의 setValue가 MUI TextField의 내부 상태를 트리거하지 않아 label shrink 미감지 | `InputLabelProps={{ shrink: !!watch('field') }}` 또는 Controller 사용 | 프로그래밍 방식으로 값 설정 시 shrink 상태 수동 관리 필요 |
 | 2026-04-07 | vite.config.ts에 test 속성 추가 시 TS2769 타입 에러 | `import { defineConfig } from 'vite'`는 test 속성 미지원 | `import { defineConfig } from 'vitest/config'`로 변경 | Vitest 설정은 반드시 `vitest/config`에서 defineConfig를 import |
 | 2026-04-07 | DOMPurify.Config 타입 TS2503 namespace 에러 | @types/dompurify 버전과 DOMPurify 버전 간 타입 불일치 | Config 타입 어노테이션 제거, 객체 리터럴로 추론 | DOMPurify config 객체에 타입 어노테이션 사용 시 버전 호환성 주의 |
+| 2026-04-08 | GoogleLogin 컴포넌트에 locale prop 사용 시 TS2322 타입 에러 | @react-oauth/google v0.13.x의 GsiButtonConfiguration 타입에 locale 프로퍼티 미존재 | locale prop 제거 (Google 버튼은 브라우저 언어 설정을 자동 감지) | @react-oauth/google 사용 시 GoogleLogin props는 반드시 타입 정의 확인 후 사용 |

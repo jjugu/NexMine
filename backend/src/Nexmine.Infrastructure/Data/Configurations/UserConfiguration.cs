@@ -39,6 +39,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IsActive)
             .HasDefaultValue(true);
 
+        builder.Property(u => u.GoogleId)
+            .HasMaxLength(100);
+
+        builder.HasIndex(u => u.GoogleId)
+            .IsUnique()
+            .HasFilter("\"GoogleId\" IS NOT NULL");
+
+        builder.Property(u => u.AvatarUrl)
+            .HasMaxLength(500);
+
         builder.HasMany(u => u.RefreshTokens)
             .WithOne(rt => rt.User)
             .HasForeignKey(rt => rt.UserId)

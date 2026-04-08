@@ -10,6 +10,8 @@ public class User : BaseEntity
     public bool IsAdmin { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime? LastLoginAt { get; set; }
+    public string? GoogleId { get; set; }
+    public string? AvatarUrl { get; set; }
 
     public List<RefreshToken> RefreshTokens { get; set; } = [];
     public List<ProjectMembership> ProjectMemberships { get; set; } = [];

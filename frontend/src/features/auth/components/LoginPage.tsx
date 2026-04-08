@@ -5,8 +5,10 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Box, Card, CardContent, TextField, Button, Typography,
-  Link as MuiLink, Alert, CircularProgress,
+  Link as MuiLink, Alert, CircularProgress, Divider,
 } from '@mui/material';
+import { GoogleLogin } from '@react-oauth/google';
+import type { CredentialResponse } from '@react-oauth/google';
 import axiosInstance from '../../../api/axiosInstance';
 import { useAuthStore } from '../../../stores/authStore';
 
@@ -44,6 +46,34 @@ export default function LoginPage() {
           err.response?.data?.detail ||
           err.response?.data?.title ||
           '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.';
+        setServerError(message);
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
+  }
+
+  function handleGoogleLoginSuccess(credentialResponse: CredentialResponse) {
+    if (!credentialResponse.credential) {
+      setServerError('Google 인증 정보를 받지 못했습니다.');
+      return;
+    }
+
+    setServerError(null);
+    setIsSubmitting(true);
+
+    axiosInstance
+      .post('/Auth/google', { idToken: credentialResponse.credential }, { withCredentials: true })
+      .then((res) => {
+        const { accessToken, user } = res.data;
+        setAuth(user, accessToken);
+        navigate('/dashboard', { replace: true });
+      })
+      .catch((err) => {
+        const message =
+          err.response?.data?.detail ||
+          err.response?.data?.title ||
+          'Google 로그인에 실패했습니다.';
         setServerError(message);
       })
       .finally(() => {
@@ -95,6 +125,17 @@ export default function LoginPage() {
             계정이 없으신가요?{' '}
             <MuiLink component={Link} to="/register">회원가입</MuiLink>
           </Typography>
+        </Box>
+        <Divider sx={{ my: 2 }}>또는</Divider>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleLoginSuccess}
+            onError={() => {
+              setServerError('Google 로그인에 실패했습니다.');
+            }}
+            text="signin_with"
+            width={320}
+          />
         </Box>
       </CardContent>
     </Card>

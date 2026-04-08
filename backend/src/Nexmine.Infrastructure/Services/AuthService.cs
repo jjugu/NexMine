@@ -1,5 +1,7 @@
 using AutoMapper;
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Nexmine.Application.Features.Auth.Dtos;
 using Nexmine.Application.Features.Auth.Interfaces;
 using Nexmine.Domain.Entities;
@@ -13,17 +15,20 @@ public class AuthService : IAuthService
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPasswordHashService _passwordHashService;
     private readonly IMapper _mapper;
+    private readonly IConfiguration _configuration;
 
     public AuthService(
         NexmineDbContext dbContext,
         IJwtTokenService jwtTokenService,
         IPasswordHashService passwordHashService,
-        IMapper mapper)
+        IMapper mapper,
+        IConfiguration configuration)
     {
         _dbContext = dbContext;
         _jwtTokenService = jwtTokenService;
         _passwordHashService = passwordHashService;
         _mapper = mapper;
+        _configuration = configuration;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, string? ipAddress)
@@ -124,6 +129,81 @@ public class AuthService : IAuthService
         }
 
         return _mapper.Map<UserDto>(user);
+    }
+
+    public async Task<AuthResponse> GoogleLoginAsync(GoogleLoginRequest request, string? ipAddress)
+    {
+        var googleClientId = _configuration["Google:ClientId"]
+            ?? throw new InvalidOperationException("Google ClientId is not configured.");
+
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { googleClientId }
+            });
+        }
+        catch (InvalidJwtException)
+        {
+            throw new UnauthorizedAccessException("유효하지 않은 Google 인증 토큰입니다.");
+        }
+
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == payload.Email);
+
+        if (user is null)
+        {
+            var username = await GenerateUniqueUsernameAsync(payload.Email);
+            user = new User
+            {
+                Username = username,
+                Email = payload.Email,
+                PasswordHash = string.Empty,
+                FirstName = payload.GivenName ?? string.Empty,
+                LastName = payload.FamilyName ?? string.Empty,
+                GoogleId = payload.Subject,
+                AvatarUrl = payload.Picture,
+                IsActive = true
+            };
+            _dbContext.Users.Add(user);
+            await _dbContext.SaveChangesAsync();
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(user.GoogleId))
+            {
+                user.GoogleId = payload.Subject;
+                user.AvatarUrl = payload.Picture;
+                if (string.IsNullOrEmpty(user.FirstName)) user.FirstName = payload.GivenName;
+                if (string.IsNullOrEmpty(user.LastName)) user.LastName = payload.FamilyName;
+                await _dbContext.SaveChangesAsync();
+            }
+        }
+
+        if (!user.IsActive)
+        {
+            throw new UnauthorizedAccessException("비활성화된 계정입니다.");
+        }
+
+        user.LastLoginAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+
+        return await GenerateAuthResponseAsync(user, ipAddress);
+    }
+
+    private async Task<string> GenerateUniqueUsernameAsync(string email)
+    {
+        var username = email.Split('@')[0];
+        var baseUsername = username;
+        var counter = 1;
+
+        while (await _dbContext.Users.AnyAsync(u => u.Username == username))
+        {
+            username = $"{baseUsername}{counter}";
+            counter++;
+        }
+
+        return username;
     }
 
     private async Task<AuthResponse> GenerateAuthResponseAsync(User user, string? ipAddress)

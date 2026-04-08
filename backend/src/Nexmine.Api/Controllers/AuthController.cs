@@ -46,6 +46,21 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("google")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GoogleLoginAsync([FromBody] GoogleLoginRequest request)
+    {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var response = await _authService.GoogleLoginAsync(request, ipAddress);
+
+        SetRefreshTokenCookie(response.RefreshToken);
+
+        return Ok(response);
+    }
+
     [HttpPost("refresh")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
