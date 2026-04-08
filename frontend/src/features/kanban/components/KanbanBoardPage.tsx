@@ -184,15 +184,13 @@ export default function KanbanBoardPage() {
           statusId: destStatusId !== sourceStatusId ? destStatusId : undefined,
           position: newPosition,
         })
-        .then(() => {
-          // Clear local override so we use server data next time
+        .then(async () => {
+          await queryClient.refetchQueries({ queryKey: ['kanban-issues', identifier] });
           setLocalIssueMap(null);
-          queryClient.invalidateQueries({ queryKey: ['kanban-issues', identifier] });
         })
-        .catch(() => {
-          // Rollback
+        .catch(async () => {
+          await queryClient.refetchQueries({ queryKey: ['kanban-issues', identifier] });
           setLocalIssueMap(null);
-          queryClient.invalidateQueries({ queryKey: ['kanban-issues', identifier] });
         });
     },
     [issuesByStatus, identifier, queryClient],

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Nexmine.Application.Features.Auth.Dtos;
 using Nexmine.Application.Features.Auth.Interfaces;
+using Nexmine.Application.Features.Settings.Interfaces;
 using Nexmine.Domain.Entities;
 using Nexmine.Infrastructure.Data;
 
@@ -16,23 +17,33 @@ public class AuthService : IAuthService
     private readonly IPasswordHashService _passwordHashService;
     private readonly IMapper _mapper;
     private readonly IConfiguration _configuration;
+    private readonly ISystemSettingService _systemSettingService;
 
     public AuthService(
         NexmineDbContext dbContext,
         IJwtTokenService jwtTokenService,
         IPasswordHashService passwordHashService,
         IMapper mapper,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ISystemSettingService systemSettingService)
     {
         _dbContext = dbContext;
         _jwtTokenService = jwtTokenService;
         _passwordHashService = passwordHashService;
         _mapper = mapper;
         _configuration = configuration;
+        _systemSettingService = systemSettingService;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, string? ipAddress)
     {
+        var mode = await _systemSettingService.GetAsync("registration_mode") ?? "open";
+
+        if (mode == "disabled")
+        {
+            throw new InvalidOperationException("회원가입이 비활성화되어 있습니다.");
+        }
+
         var existingUser = await _dbContext.Users
             .AnyAsync(u => u.Username == request.Username || u.Email == request.Email);
 
@@ -41,6 +52,8 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("이미 사용 중인 아이디 또는 이메일입니다.");
         }
 
+        var isApprovalMode = mode == "approval";
+
         var user = new User
         {
             Username = request.Username,
@@ -48,11 +61,19 @@ public class AuthService : IAuthService
             PasswordHash = _passwordHashService.Hash(request.Password),
             FirstName = request.FirstName,
             LastName = request.LastName,
-            IsActive = true
+            IsActive = !isApprovalMode
         };
 
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
+
+        if (isApprovalMode)
+        {
+            return new AuthResponse
+            {
+                RequiresApproval = true
+            };
+        }
 
         return await GenerateAuthResponseAsync(user, ipAddress);
     }

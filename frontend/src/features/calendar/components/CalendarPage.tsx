@@ -122,6 +122,7 @@ export default function CalendarPage() {
     queryKey: ['calendar', identifier, dateRange.start, dateRange.end],
     queryFn: () => fetchCalendarData(identifier!, dateRange.start, dateRange.end),
     enabled: !!identifier,
+    placeholderData: (prev) => prev,
   });
 
   const calendarEvents = useMemo(

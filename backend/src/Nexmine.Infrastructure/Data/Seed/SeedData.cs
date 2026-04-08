@@ -3,6 +3,7 @@ using Nexmine.Domain.Entities;
 
 namespace Nexmine.Infrastructure.Data.Seed;
 
+
 public static class SeedData
 {
     public static void Apply(ModelBuilder modelBuilder)
@@ -73,6 +74,10 @@ public static class SeedData
             new IssuePriority { Id = 3, Name = "High", IsDefault = false, Position = 3, CreatedAt = utcNow, UpdatedAt = utcNow },
             new IssuePriority { Id = 4, Name = "Urgent", IsDefault = false, Position = 4, CreatedAt = utcNow, UpdatedAt = utcNow },
             new IssuePriority { Id = 5, Name = "Immediate", IsDefault = false, Position = 5, CreatedAt = utcNow, UpdatedAt = utcNow }
+        );
+
+        modelBuilder.Entity<SystemSetting>().HasData(
+            new SystemSetting { Id = 1, Key = "registration_mode", Value = "open", CreatedAt = utcNow, UpdatedAt = utcNow }
         );
     }
 }

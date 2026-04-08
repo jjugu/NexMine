@@ -72,6 +72,7 @@ const adminNavItems = [
   { label: '워크플로우', icon: <AccountTreeIcon />, path: '/admin/workflows' },
   { label: '이슈 템플릿', icon: <ContentPasteIcon />, path: '/admin/issue-templates' },
   { label: '그룹', icon: <GroupIcon />, path: '/admin/groups' },
+  { label: '시스템 설정', icon: <SettingsIcon />, path: '/admin/settings' },
 ];
 
 interface ProjectSubNavItem {

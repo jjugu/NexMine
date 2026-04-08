@@ -17,6 +17,7 @@ using Nexmine.Application.Features.Roadmap.Interfaces;
 using Nexmine.Application.Features.Forums.Interfaces;
 using Nexmine.Application.Features.SavedQueries.Interfaces;
 using Nexmine.Application.Features.Search.Interfaces;
+using Nexmine.Application.Features.Settings.Interfaces;
 using Nexmine.Application.Features.Watchers.Interfaces;
 using Nexmine.Application.Features.Wiki.Interfaces;
 using Nexmine.Application.Features.Workflows.Interfaces;
@@ -92,6 +93,9 @@ public static class DependencyInjection
 
         // Forums
         services.AddScoped<IForumService, ForumService>();
+
+        // System settings
+        services.AddScoped<ISystemSettingService, SystemSettingService>();
 
         return services;
     }

@@ -20,6 +20,7 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request)
@@ -27,7 +28,12 @@ public class AuthController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         var response = await _authService.RegisterAsync(request, ipAddress);
 
-        SetRefreshTokenCookie(response.RefreshToken);
+        if (response.RequiresApproval)
+        {
+            return Ok(response);
+        }
+
+        SetRefreshTokenCookie(response.RefreshToken!);
 
         return CreatedAtAction("GetMe", null, response);
     }
@@ -41,7 +47,7 @@ public class AuthController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         var response = await _authService.LoginAsync(request, ipAddress);
 
-        SetRefreshTokenCookie(response.RefreshToken);
+        SetRefreshTokenCookie(response.RefreshToken!);
 
         return Ok(response);
     }
@@ -56,7 +62,7 @@ public class AuthController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         var response = await _authService.GoogleLoginAsync(request, ipAddress);
 
-        SetRefreshTokenCookie(response.RefreshToken);
+        SetRefreshTokenCookie(response.RefreshToken!);
 
         return Ok(response);
     }
@@ -89,7 +95,7 @@ public class AuthController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         var response = await _authService.RefreshAsync(refreshToken, ipAddress);
 
-        SetRefreshTokenCookie(response.RefreshToken);
+        SetRefreshTokenCookie(response.RefreshToken!);
 
         return Ok(response);
     }

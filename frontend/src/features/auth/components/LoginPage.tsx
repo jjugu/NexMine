@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box, Card, CardContent, TextField, Button, Typography,
   Link as MuiLink, Alert, CircularProgress, Divider,
@@ -24,6 +25,15 @@ export default function LoginPage() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: registrationMode } = useQuery({
+    queryKey: ['registration-mode'],
+    queryFn: () =>
+      axiosInstance
+        .get<{ mode: string }>('/settings/registration-mode')
+        .then((res) => res.data.mode),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -121,10 +131,14 @@ export default function LoginPage() {
           >
             {isSubmitting ? '로그인 중...' : '로그인'}
           </Button>
-          <Typography variant="body2" sx={{ textAlign: 'center' }}>
-            계정이 없으신가요?{' '}
-            <MuiLink component={Link} to="/register">회원가입</MuiLink>
-          </Typography>
+          {registrationMode !== 'disabled' && (
+            <Typography variant="body2" sx={{ textAlign: 'center' }}>
+              계정이 없으신가요?{' '}
+              <MuiLink component={Link} to="/register">
+                {registrationMode === 'approval' ? '회원가입 (관리자 승인 필요)' : '회원가입'}
+              </MuiLink>
+            </Typography>
+          )}
         </Box>
         <Divider sx={{ my: 2 }}>또는</Divider>
         <Box sx={{ display: 'flex', justifyContent: 'center' }}>

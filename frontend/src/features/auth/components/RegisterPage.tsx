@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box, Card, CardContent, TextField, Button, Typography,
   Link as MuiLink, Alert, CircularProgress, Grid,
@@ -34,6 +35,16 @@ export default function RegisterPage() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+
+  const { data: registrationMode, isLoading: isModeLoading } = useQuery({
+    queryKey: ['registration-mode'],
+    queryFn: () =>
+      axiosInstance
+        .get<{ mode: string }>('/settings/registration-mode')
+        .then((res) => res.data.mode),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -57,9 +68,13 @@ export default function RegisterPage() {
     axiosInstance
       .post('/Auth/register', payload)
       .then((res) => {
-        const { accessToken, user } = res.data;
-        setAuth(user, accessToken);
-        navigate('/dashboard', { replace: true });
+        const { accessToken, user, requiresApproval } = res.data;
+        if (requiresApproval) {
+          setRegistrationComplete(true);
+        } else {
+          setAuth(user, accessToken);
+          navigate('/dashboard', { replace: true });
+        }
       })
       .catch((err) => {
         const message =
@@ -73,10 +88,57 @@ export default function RegisterPage() {
       });
   }
 
+  if (isModeLoading) {
+    return (
+      <Card>
+        <CardContent sx={{ p: 3, textAlign: 'center' }}>
+          <CircularProgress />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (registrationMode === 'disabled') {
+    return (
+      <Card>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h5" sx={{ mb: 3, textAlign: 'center' }}>회원가입</Typography>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            회원가입이 비활성화되어 있습니다. 관리자에게 문의해주세요.
+          </Alert>
+          <Typography variant="body2" sx={{ textAlign: 'center' }}>
+            <MuiLink component={Link} to="/login">로그인 페이지로 이동</MuiLink>
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (registrationComplete) {
+    return (
+      <Card>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h5" sx={{ mb: 3, textAlign: 'center' }}>회원가입</Typography>
+          <Alert severity="success" sx={{ mb: 2 }}>
+            가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.
+          </Alert>
+          <Typography variant="body2" sx={{ textAlign: 'center' }}>
+            <MuiLink component={Link} to="/login">로그인 페이지로 이동</MuiLink>
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardContent sx={{ p: 3 }}>
         <Typography variant="h5" sx={{ mb: 3, textAlign: 'center' }}>회원가입</Typography>
+        {registrationMode === 'approval' && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            가입 후 관리자 승인이 필요합니다.
+          </Alert>
+        )}
         {serverError && (
           <Alert severity="error" sx={{ mb: 2 }}>{serverError}</Alert>
         )}
