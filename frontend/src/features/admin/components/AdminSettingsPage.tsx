@@ -1,21 +1,44 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Box, Typography, Card, CardContent, Button,
+  Box, Typography, Card, CardContent, Button, TextField,
   Radio, RadioGroup, FormControl, FormControlLabel, FormLabel,
-  Snackbar, Alert, Skeleton, CircularProgress,
+  Snackbar, Alert, Skeleton, CircularProgress, Tooltip,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
+import CheckIcon from '@mui/icons-material/Check';
 import axiosInstance from '../../../api/axiosInstance';
+
+const PRESET_COLORS = [
+  { value: '#1976d2', label: '파랑 (기본)' },
+  { value: '#388e3c', label: '초록' },
+  { value: '#d32f2f', label: '빨강' },
+  { value: '#7b1fa2', label: '보라' },
+  { value: '#f57c00', label: '주황' },
+  { value: '#455a64', label: '회색' },
+  { value: '#00838f', label: '청록' },
+  { value: '#c2185b', label: '핑크' },
+];
 
 interface AdminSettings {
   registration_mode: string;
+  app_name: string;
+  app_description: string;
+  session_timeout_minutes: string;
+  primary_color: string;
+  logo_url: string;
   [key: string]: string;
 }
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
   const [registrationMode, setRegistrationMode] = useState<string>('open');
+  const [appName, setAppName] = useState('');
+  const [appDescription, setAppDescription] = useState('');
+  const [sessionTimeout, setSessionTimeout] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#1976d2');
+  const [customColor, setCustomColor] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -28,16 +51,24 @@ export default function AdminSettingsPage() {
   });
 
   useEffect(() => {
-    if (settings?.registration_mode) {
-      setRegistrationMode(settings.registration_mode);
+    if (settings) {
+      if (settings.registration_mode) {
+        setRegistrationMode(settings.registration_mode);
+      }
+      setAppName(settings.app_name ?? '');
+      setAppDescription(settings.app_description ?? '');
+      setSessionTimeout(settings.session_timeout_minutes ?? '');
+      setPrimaryColor(settings.primary_color || '#1976d2');
+      setLogoUrl(settings.logo_url ?? '');
     }
   }, [settings]);
 
   const saveMutation = useMutation({
-    mutationFn: (value: string) =>
-      axiosInstance.put('/admin/settings', { key: 'registration_mode', value }),
+    mutationFn: ({ key, value }: { key: string; value: string }) =>
+      axiosInstance.put('/admin/settings', { key, value }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] });
       setSnackbar({ open: true, message: '설정이 저장되었습니다.', severity: 'success' });
     },
     onError: () => {
@@ -45,8 +76,17 @@ export default function AdminSettingsPage() {
     },
   });
 
-  function handleSave() {
-    saveMutation.mutate(registrationMode);
+  function handleSaveRegistrationMode() {
+    saveMutation.mutate({ key: 'registration_mode', value: registrationMode });
+  }
+
+  function handleSaveAppSettings() {
+    const saves = [
+      { key: 'app_name', value: appName },
+      { key: 'app_description', value: appDescription },
+      { key: 'session_timeout_minutes', value: sessionTimeout },
+    ];
+    saves.forEach((s) => saveMutation.mutate(s));
   }
 
   if (isLoading) {
@@ -76,7 +116,8 @@ export default function AdminSettingsPage() {
     <Box>
       <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>시스템 설정</Typography>
 
-      <Card>
+      {/* Registration mode section */}
+      <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <FormControl component="fieldset">
             <FormLabel component="legend" sx={{ fontWeight: 600, mb: 1 }}>
@@ -132,10 +173,172 @@ export default function AdminSettingsPage() {
             <Button
               variant="contained"
               startIcon={saveMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-              onClick={handleSave}
+              onClick={handleSaveRegistrationMode}
               disabled={saveMutation.isPending}
             >
               {saveMutation.isPending ? '저장 중...' : '저장'}
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* App settings section */}
+      <Card>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+            앱 설정
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="앱 이름"
+              value={appName}
+              onChange={(e) => setAppName(e.target.value)}
+              placeholder="Nexmine"
+              fullWidth
+            />
+            <TextField
+              label="앱 설명"
+              value={appDescription}
+              onChange={(e) => setAppDescription(e.target.value)}
+              placeholder="프로젝트 관리 시스템"
+              fullWidth
+              multiline
+              minRows={2}
+            />
+            <TextField
+              label="기본 세션 타임아웃 (분)"
+              type="number"
+              value={sessionTimeout}
+              onChange={(e) => setSessionTimeout(e.target.value)}
+              placeholder="30"
+              slotProps={{ htmlInput: { min: 1 } }}
+              sx={{ maxWidth: 280 }}
+            />
+          </Box>
+          <Box sx={{ mt: 3 }}>
+            <Button
+              variant="contained"
+              startIcon={saveMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+              onClick={handleSaveAppSettings}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending ? '저장 중...' : '전체 저장'}
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Theme settings section */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+            테마 설정
+          </Typography>
+
+          {/* Color palette */}
+          <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+            기본 색상
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+            {PRESET_COLORS.map((color) => (
+              <Tooltip title={color.label} key={color.value}>
+                <Box
+                  onClick={() => {
+                    setPrimaryColor(color.value);
+                    setCustomColor('');
+                  }}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 1,
+                    bgcolor: color.value,
+                    cursor: 'pointer',
+                    border: primaryColor === color.value ? '3px solid' : '2px solid transparent',
+                    borderColor: primaryColor === color.value ? 'text.primary' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'border-color 0.2s',
+                    '&:hover': { opacity: 0.85 },
+                  }}
+                >
+                  {primaryColor === color.value && (
+                    <CheckIcon sx={{ color: '#fff', fontSize: 20 }} />
+                  )}
+                </Box>
+              </Tooltip>
+            ))}
+          </Box>
+
+          {/* Custom hex input */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+            <TextField
+              label="커스텀 HEX 색상"
+              value={customColor}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCustomColor(val);
+                if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+                  setPrimaryColor(val);
+                }
+              }}
+              placeholder="#1976d2"
+              sx={{ width: 200 }}
+            />
+            {customColor && /^#[0-9a-fA-F]{6}$/.test(customColor) && (
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 1,
+                  bgcolor: customColor,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              />
+            )}
+          </Box>
+
+          {/* Logo URL */}
+          <TextField
+            label="로고 URL"
+            value={logoUrl}
+            onChange={(e) => setLogoUrl(e.target.value)}
+            placeholder="https://example.com/logo.png"
+            fullWidth
+            sx={{ mb: 1 }}
+          />
+          {logoUrl && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                미리보기
+              </Typography>
+              <Box
+                component="img"
+                src={logoUrl}
+                alt="로고 미리보기"
+                sx={{ height: 40, maxWidth: 200, objectFit: 'contain' }}
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </Box>
+          )}
+
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="contained"
+              startIcon={saveMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+              onClick={() => {
+                const saves = [
+                  { key: 'primary_color', value: primaryColor },
+                  { key: 'logo_url', value: logoUrl },
+                ];
+                saves.forEach((s) => saveMutation.mutate(s));
+              }}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending ? '저장 중...' : '테마 저장'}
             </Button>
           </Box>
         </CardContent>

@@ -1,0 +1,59 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "loading": "Loading...",
+    "noData": "No data",
+    "confirm": "Confirm",
+    "retry": "Retry",
+    "close": "Close",
+    "back": "Back",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "myPage": "My Page",
+    "projects": "Projects",
+    "activity": "Activity",
+    "timeReport": "Time Report",
+    "issues": "Issues",
+    "kanban": "Kanban",
+    "gantt": "Gantt",
+    "calendar": "Calendar",
+    "wiki": "Wiki",
+    "documents": "Documents",
+    "forums": "Forums",
+    "news": "News",
+    "roadmap": "Roadmap",
+    "versions": "Versions",
+    "settings": "Settings"
+  },
+  "admin": {
+    "title": "Admin",
+    "users": "Users",
+    "roles": "Roles",
+    "trackers": "Trackers",
+    "statuses": "Statuses",
+    "priorities": "Priorities",
+    "customFields": "Custom Fields",
+    "workflows": "Workflows",
+    "issueTemplates": "Issue Templates",
+    "groups": "Groups",
+    "systemSettings": "System Settings"
+  },
+  "auth": {
+    "login": "Sign In",
+    "register": "Sign Up",
+    "logout": "Sign Out",
+    "username": "Username",
+    "password": "Password",
+    "email": "Email",
+    "loginWithGoogle": "Sign in with Google",
+    "or": "or"
+  }
+}

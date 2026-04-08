@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexmine.Application.Features.Admin.Dtos;
 using Nexmine.Application.Features.Admin.Interfaces;
@@ -17,15 +18,11 @@ public class AdminRoleService : IAdminRoleService
 
     public async Task<List<AdminRoleDto>> ListAsync()
     {
-        return await _dbContext.Roles
+        var roles = await _dbContext.Roles
             .OrderBy(r => r.Id)
-            .Select(r => new AdminRoleDto
-            {
-                Id = r.Id,
-                Name = r.Name,
-                PermissionsJson = r.PermissionsJson
-            })
             .ToListAsync();
+
+        return roles.Select(r => MapToDto(r)).ToList();
     }
 
     public async Task<AdminRoleDto> CreateAsync(CreateRoleRequest request)
@@ -33,18 +30,13 @@ public class AdminRoleService : IAdminRoleService
         var role = new Role
         {
             Name = request.Name,
-            PermissionsJson = request.PermissionsJson
+            PermissionsJson = SerializePermissions(request.Permissions)
         };
 
         _dbContext.Roles.Add(role);
         await _dbContext.SaveChangesAsync();
 
-        return new AdminRoleDto
-        {
-            Id = role.Id,
-            Name = role.Name,
-            PermissionsJson = role.PermissionsJson
-        };
+        return MapToDto(role);
     }
 
     public async Task<AdminRoleDto?> UpdateAsync(int id, UpdateRoleRequest request)
@@ -53,16 +45,11 @@ public class AdminRoleService : IAdminRoleService
         if (role is null) return null;
 
         if (request.Name is not null) role.Name = request.Name;
-        if (request.PermissionsJson is not null) role.PermissionsJson = request.PermissionsJson;
+        if (request.Permissions is not null) role.PermissionsJson = SerializePermissions(request.Permissions);
 
         await _dbContext.SaveChangesAsync();
 
-        return new AdminRoleDto
-        {
-            Id = role.Id,
-            Name = role.Name,
-            PermissionsJson = role.PermissionsJson
-        };
+        return MapToDto(role);
     }
 
     public async Task<bool> DeleteAsync(int id)
@@ -79,5 +66,38 @@ public class AdminRoleService : IAdminRoleService
         _dbContext.Roles.Remove(role);
         await _dbContext.SaveChangesAsync();
         return true;
+    }
+
+    private static AdminRoleDto MapToDto(Role role)
+    {
+        return new AdminRoleDto
+        {
+            Id = role.Id,
+            Name = role.Name,
+            Permissions = DeserializePermissions(role.PermissionsJson)
+        };
+    }
+
+    private static string[] DeserializePermissions(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return [];
+
+        try
+        {
+            return JsonSerializer.Deserialize<string[]>(json) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string? SerializePermissions(string[]? permissions)
+    {
+        if (permissions is null || permissions.Length == 0)
+            return null;
+
+        return JsonSerializer.Serialize(permissions);
     }
 }

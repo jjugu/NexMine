@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   Box, Drawer, AppBar, Toolbar, Typography, IconButton,
@@ -44,39 +45,40 @@ import NewspaperIcon from '@mui/icons-material/Newspaper';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import GroupIcon from '@mui/icons-material/Group';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
+import TranslateIcon from '@mui/icons-material/Translate';
 import { useIsFetching, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import axiosInstance from '../../api/axiosInstance';
-import type { SavedQueryDto, ProjectDto } from '../../api/generated/model';
+import type { SavedQueryDto, ProjectDto, AppSettingsResponse } from '../../api/generated/model';
 import RealtimeNotifications from '../common/RealtimeNotifications';
 
 const DRAWER_WIDTH = 240;
 const DRAWER_COLLAPSED_WIDTH = 56;
 
 const navItems = [
-  { label: '대시보드', icon: <DashboardIcon />, path: '/dashboard' },
-  { label: '내 페이지', icon: <DashboardCustomizeIcon />, path: '/my/page' },
-  { label: '프로젝트', icon: <FolderIcon />, path: '/projects' },
-  { label: '활동', icon: <HistoryIcon />, path: '/activity' },
-  { label: '시간 보고서', icon: <AssessmentIcon />, path: '/reports/time' },
+  { labelKey: 'nav.dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+  { labelKey: 'nav.myPage', icon: <DashboardCustomizeIcon />, path: '/my/page' },
+  { labelKey: 'nav.projects', icon: <FolderIcon />, path: '/projects' },
+  { labelKey: 'nav.activity', icon: <HistoryIcon />, path: '/activity' },
+  { labelKey: 'nav.timeReport', icon: <AssessmentIcon />, path: '/reports/time' },
 ];
 
 const adminNavItems = [
-  { label: '사용자 관리', icon: <PeopleIcon />, path: '/admin/users' },
-  { label: '역할', icon: <SecurityIcon />, path: '/admin/roles' },
-  { label: '트래커', icon: <LabelIcon />, path: '/admin/trackers' },
-  { label: '상태', icon: <PlaylistAddCheckIcon />, path: '/admin/statuses' },
-  { label: '우선순위', icon: <PriorityHighIcon />, path: '/admin/priorities' },
-  { label: '커스텀 필드', icon: <TuneIcon />, path: '/admin/custom-fields' },
-  { label: '워크플로우', icon: <AccountTreeIcon />, path: '/admin/workflows' },
-  { label: '이슈 템플릿', icon: <ContentPasteIcon />, path: '/admin/issue-templates' },
-  { label: '그룹', icon: <GroupIcon />, path: '/admin/groups' },
-  { label: '시스템 설정', icon: <SettingsIcon />, path: '/admin/settings' },
+  { labelKey: 'admin.users', icon: <PeopleIcon />, path: '/admin/users' },
+  { labelKey: 'admin.roles', icon: <SecurityIcon />, path: '/admin/roles' },
+  { labelKey: 'admin.trackers', icon: <LabelIcon />, path: '/admin/trackers' },
+  { labelKey: 'admin.statuses', icon: <PlaylistAddCheckIcon />, path: '/admin/statuses' },
+  { labelKey: 'admin.priorities', icon: <PriorityHighIcon />, path: '/admin/priorities' },
+  { labelKey: 'admin.customFields', icon: <TuneIcon />, path: '/admin/custom-fields' },
+  { labelKey: 'admin.workflows', icon: <AccountTreeIcon />, path: '/admin/workflows' },
+  { labelKey: 'admin.issueTemplates', icon: <ContentPasteIcon />, path: '/admin/issue-templates' },
+  { labelKey: 'admin.groups', icon: <GroupIcon />, path: '/admin/groups' },
+  { labelKey: 'admin.systemSettings', icon: <SettingsIcon />, path: '/admin/settings' },
 ];
 
 interface ProjectSubNavItem {
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
   path: string;
   isDisabled?: boolean;
@@ -85,18 +87,18 @@ interface ProjectSubNavItem {
 
 function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
   return [
-    { label: '이슈', icon: <BugReportIcon />, path: `/projects/${identifier}/issues`, moduleKey: 'issues' },
-    { label: '칸반', icon: <ViewKanbanIcon />, path: `/projects/${identifier}/kanban`, moduleKey: 'boards' },
-    { label: '간트', icon: <BarChartIcon />, path: `/projects/${identifier}/gantt`, moduleKey: 'gantt' },
-    { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar`, moduleKey: 'calendar' },
-    { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki`, moduleKey: 'wiki' },
-    { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents`, moduleKey: 'documents' },
-    { label: '게시판', icon: <ForumIcon />, path: `/projects/${identifier}/forums`, moduleKey: 'forums' },
-    { label: '뉴스', icon: <NewspaperIcon />, path: `/projects/${identifier}/news`, moduleKey: 'news' },
-    { label: '로드맵', icon: <FlagIcon />, path: `/projects/${identifier}/roadmap`, moduleKey: 'roadmap' },
-    { label: '활동', icon: <HistoryIcon />, path: `/projects/${identifier}/activity`, moduleKey: 'activity' },
-    { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions`, moduleKey: 'time_tracking' },
-    { label: '설정', icon: <SettingsIcon />, path: `/projects/${identifier}/settings` },
+    { labelKey: 'nav.issues', icon: <BugReportIcon />, path: `/projects/${identifier}/issues`, moduleKey: 'issues' },
+    { labelKey: 'nav.kanban', icon: <ViewKanbanIcon />, path: `/projects/${identifier}/kanban`, moduleKey: 'boards' },
+    { labelKey: 'nav.gantt', icon: <BarChartIcon />, path: `/projects/${identifier}/gantt`, moduleKey: 'gantt' },
+    { labelKey: 'nav.calendar', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar`, moduleKey: 'calendar' },
+    { labelKey: 'nav.wiki', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki`, moduleKey: 'wiki' },
+    { labelKey: 'nav.documents', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents`, moduleKey: 'documents' },
+    { labelKey: 'nav.forums', icon: <ForumIcon />, path: `/projects/${identifier}/forums`, moduleKey: 'forums' },
+    { labelKey: 'nav.news', icon: <NewspaperIcon />, path: `/projects/${identifier}/news`, moduleKey: 'news' },
+    { labelKey: 'nav.roadmap', icon: <FlagIcon />, path: `/projects/${identifier}/roadmap`, moduleKey: 'roadmap' },
+    { labelKey: 'nav.activity', icon: <HistoryIcon />, path: `/projects/${identifier}/activity`, moduleKey: 'activity' },
+    { labelKey: 'nav.versions', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions`, moduleKey: 'time_tracking' },
+    { labelKey: 'nav.settings', icon: <SettingsIcon />, path: `/projects/${identifier}/settings` },
   ];
 }
 
@@ -114,6 +116,7 @@ function filterSubNavByModules(
 }
 
 export default function AppLayout() {
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
@@ -130,6 +133,19 @@ export default function AppLayout() {
   const { user, clearAuth } = useAuthStore();
   const { mode, toggleMode } = useThemeStore();
   const isFetching = useIsFetching();
+
+  // App settings (name, logo) - long staleTime since these rarely change
+  const { data: appSettings } = useQuery({
+    queryKey: ['app-settings'],
+    queryFn: () =>
+      axiosInstance
+        .get<AppSettingsResponse>('/settings/app')
+        .then((res) => res.data),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const appDisplayName = appSettings?.appName || 'Nexmine';
+  const appLogoUrl = appSettings?.logoUrl || null;
 
   // Detect if we are inside a project context (/projects/{identifier} and deeper)
   const projectMatch = location.pathname.match(/^\/projects\/([^/]+)/);
@@ -223,16 +239,29 @@ export default function AppLayout() {
       <Toolbar sx={{ justifyContent: sidebarOpen ? 'space-between' : 'center', px: sidebarOpen ? 2 : 0.5, minHeight: 48 }}>
         {sidebarOpen ? (
           <>
-            <Typography
-              variant="h6"
-              sx={{ fontWeight: 700, color: 'primary.main', cursor: 'pointer' }}
+            <Box
+              sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }}
               onClick={() => {
                 navigate('/dashboard');
                 if (isMobile) setMobileOpen(false);
               }}
             >
-              Nexmine
-            </Typography>
+              {appLogoUrl ? (
+                <Box
+                  component="img"
+                  src={appLogoUrl}
+                  alt={appDisplayName}
+                  sx={{ height: 28, maxWidth: 140, objectFit: 'contain' }}
+                />
+              ) : (
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap' }}
+                >
+                  {appDisplayName}
+                </Typography>
+              )}
+            </Box>
             {!isMobile && (
               <IconButton size="small" onClick={() => setSidebarOpen(false)}>
                 <ChevronLeftIcon fontSize="small" />
@@ -265,7 +294,7 @@ export default function AppLayout() {
           '&:hover::-webkit-scrollbar-thumb': { bgcolor: 'action.disabled' },
         }}>
         {navItems.map((item) => (
-          <Tooltip title={!sidebarOpen ? item.label : ''} placement="right" key={item.path}>
+          <Tooltip title={!sidebarOpen ? t(item.labelKey) : ''} placement="right" key={item.path}>
             <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => {
@@ -275,7 +304,7 @@ export default function AppLayout() {
               sx={{ borderRadius: 1, mb: 0.5, justifyContent: sidebarOpen ? 'initial' : 'center', px: sidebarOpen ? 2 : 1 }}
             >
               <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>{item.icon}</ListItemIcon>
-              {sidebarOpen && <ListItemText primary={item.label} />}
+              {sidebarOpen && <ListItemText primary={t(item.labelKey)} />}
             </ListItemButton>
           </Tooltip>
         ))}
@@ -304,7 +333,7 @@ export default function AppLayout() {
             </ListItemButton>
             </Tooltip>
             {projectSubNav.map((item) => (
-              <Tooltip title={!sidebarOpen ? item.label : ''} placement="right" key={item.path}>
+              <Tooltip title={!sidebarOpen ? t(item.labelKey) : ''} placement="right" key={item.path}>
               <ListItemButton
                 selected={location.pathname.startsWith(item.path)}
                 disabled={item.isDisabled}
@@ -317,7 +346,7 @@ export default function AppLayout() {
                 sx={{ borderRadius: 1, mb: 0.5, pl: sidebarOpen ? 2 : 1, justifyContent: sidebarOpen ? 'initial' : 'center', px: sidebarOpen ? 2 : 1 }}
               >
                 <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>{item.icon}</ListItemIcon>
-                {sidebarOpen && <ListItemText primary={item.label} />}
+                {sidebarOpen && <ListItemText primary={t(item.labelKey)} />}
               </ListItemButton>
               </Tooltip>
             ))}
@@ -371,13 +400,13 @@ export default function AppLayout() {
                   <AdminPanelSettingsIcon fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="관리자"
+                  primary={t('admin.title')}
                   primaryTypographyProps={{ variant: 'caption', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}
                 />
                 {adminOpen ? <ExpandLessIcon fontSize="small" sx={{ color: 'text.secondary' }} /> : <ExpandMoreIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
               </ListItemButton>
             ) : (
-              <Tooltip title="관리자" placement="right">
+              <Tooltip title={t('admin.title')} placement="right">
                 <ListItemButton onClick={() => setAdminOpen(!adminOpen)} sx={{ borderRadius: 1, mb: 0.5, justifyContent: 'center', px: 1 }}>
                   <AdminPanelSettingsIcon fontSize="small" />
                 </ListItemButton>
@@ -385,7 +414,7 @@ export default function AppLayout() {
             )}
             <Collapse in={adminOpen} timeout="auto" unmountOnExit>
             {adminNavItems.map((item) => (
-              <Tooltip title={!sidebarOpen ? item.label : ''} placement="right" key={item.path}>
+              <Tooltip title={!sidebarOpen ? t(item.labelKey) : ''} placement="right" key={item.path}>
               <ListItemButton
                 selected={location.pathname === item.path}
                 onClick={() => {
@@ -395,7 +424,7 @@ export default function AppLayout() {
                 sx={{ borderRadius: 1, mb: 0.5, pl: sidebarOpen ? 3 : 1, justifyContent: sidebarOpen ? 'initial' : 'center', px: sidebarOpen ? 2 : 1 }}
               >
                 <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>{item.icon}</ListItemIcon>
-                {sidebarOpen && <ListItemText primary={item.label} />}
+                {sidebarOpen && <ListItemText primary={t(item.labelKey)} />}
               </ListItemButton>
               </Tooltip>
             ))}
@@ -554,11 +583,24 @@ export default function AppLayout() {
                 </Typography>
               </MenuItem>
               <Divider />
+              <MenuItem
+                onClick={() => {
+                  const nextLang = i18n.language === 'ko' ? 'en' : 'ko';
+                  i18n.changeLanguage(nextLang);
+                  localStorage.setItem('nexmine-language', nextLang);
+                  handleMenuClose();
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <TranslateIcon fontSize="small" />
+                </ListItemIcon>
+                {i18n.language === 'ko' ? 'English' : '한국어'}
+              </MenuItem>
               <MenuItem onClick={handleLogout}>
                 <ListItemIcon sx={{ minWidth: 36 }}>
                   <LogoutIcon fontSize="small" />
                 </ListItemIcon>
-                로그아웃
+                {t('auth.logout')}
               </MenuItem>
             </Menu>
           </Toolbar>

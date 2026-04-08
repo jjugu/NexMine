@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexmine.Application.Features.Admin.Dtos;
 using Nexmine.Application.Features.Admin.Interfaces;
+using Nexmine.Application.Features.Permissions;
 
 namespace Nexmine.Api.Controllers;
 
@@ -15,6 +16,18 @@ public class AdminRolesController : ControllerBase
     public AdminRolesController(IAdminRoleService adminRoleService)
     {
         _adminRoleService = adminRoleService;
+    }
+
+    [HttpGet("/api/admin/permissions")]
+    [ProducesResponseType(typeof(PermissionListResponse), StatusCodes.Status200OK)]
+    public IActionResult GetPermissions()
+    {
+        var response = new PermissionListResponse
+        {
+            Groups = PermissionConstants.AllGrouped,
+            Labels = PermissionConstants.GroupLabels
+        };
+        return Ok(response);
     }
 
     [HttpGet]

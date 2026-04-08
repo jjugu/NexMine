@@ -1,0 +1,59 @@
+{
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "create": "생성",
+    "search": "검색",
+    "loading": "로딩 중...",
+    "noData": "데이터가 없습니다",
+    "confirm": "확인",
+    "retry": "재시도",
+    "close": "닫기",
+    "back": "뒤로",
+    "yes": "예",
+    "no": "아니오"
+  },
+  "nav": {
+    "dashboard": "대시보드",
+    "myPage": "내 페이지",
+    "projects": "프로젝트",
+    "activity": "활동",
+    "timeReport": "시간 보고서",
+    "issues": "이슈",
+    "kanban": "칸반",
+    "gantt": "간트",
+    "calendar": "캘린더",
+    "wiki": "위키",
+    "documents": "문서",
+    "forums": "게시판",
+    "news": "뉴스",
+    "roadmap": "로드맵",
+    "versions": "버전",
+    "settings": "설정"
+  },
+  "admin": {
+    "title": "관리자",
+    "users": "사용자 관리",
+    "roles": "역할",
+    "trackers": "트래커",
+    "statuses": "상태",
+    "priorities": "우선순위",
+    "customFields": "커스텀 필드",
+    "workflows": "워크플로우",
+    "issueTemplates": "이슈 템플릿",
+    "groups": "그룹",
+    "systemSettings": "시스템 설정"
+  },
+  "auth": {
+    "login": "로그인",
+    "register": "회원가입",
+    "logout": "로그아웃",
+    "username": "아이디",
+    "password": "비밀번호",
+    "email": "이메일",
+    "loginWithGoogle": "Google로 로그인",
+    "or": "또는"
+  }
+}

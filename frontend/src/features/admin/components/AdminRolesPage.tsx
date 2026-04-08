@@ -6,13 +6,15 @@ import {
   Paper, Skeleton, Card, CardContent,
   useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent,
   DialogActions, Alert, IconButton, Tooltip,
-  Checkbox, FormControlLabel, FormGroup, Chip,
+  Checkbox, FormControlLabel, Chip, Accordion, AccordionSummary, AccordionDetails,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SecurityIcon from '@mui/icons-material/Security';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import axiosInstance from '../../../api/axiosInstance';
+import type { PermissionListResponse } from '../../../api/generated/model';
 
 interface Role {
   id: number;
@@ -20,20 +22,46 @@ interface Role {
   permissions: string[];
 }
 
-const AVAILABLE_PERMISSIONS = [
-  { key: 'manage_project', label: '프로젝트 관리' },
-  { key: 'manage_members', label: '멤버 관리' },
-  { key: 'manage_versions', label: '버전 관리' },
-  { key: 'manage_categories', label: '카테고리 관리' },
-  { key: 'manage_wiki', label: '위키 관리' },
-  { key: 'manage_documents', label: '문서 관리' },
-  { key: 'view_issues', label: '이슈 보기' },
-  { key: 'add_issues', label: '이슈 추가' },
-  { key: 'edit_issues', label: '이슈 편집' },
-  { key: 'delete_issues', label: '이슈 삭제' },
-  { key: 'add_comments', label: '댓글 추가' },
-  { key: 'log_time', label: '시간 기록' },
-];
+const PERMISSION_LABELS: Record<string, string> = {
+  'project.view': '프로젝트 조회',
+  'project.edit': '프로젝트 수정',
+  'project.manage': '프로젝트 관리',
+  'project.archive': '프로젝트 보관',
+  'issue.view': '이슈 조회',
+  'issue.create': '이슈 생성',
+  'issue.edit': '이슈 수정',
+  'issue.edit_own': '내 이슈 수정',
+  'issue.delete': '이슈 삭제',
+  'issue.comment': '이슈 댓글',
+  'issue.assign': '이슈 할당',
+  'issue.manage_watchers': '감시자 관리',
+  'issue.bulk_edit': '이슈 일괄 편집',
+  'time_entry.create': '시간 기록 생성',
+  'time_entry.edit': '시간 기록 수정',
+  'time_entry.edit_own': '내 시간 기록 수정',
+  'time_entry.view': '시간 기록 조회',
+  'wiki.view': '위키 조회',
+  'wiki.create': '위키 생성',
+  'wiki.edit': '위키 편집',
+  'wiki.delete': '위키 삭제',
+  'document.view': '문서 조회',
+  'document.create': '문서 생성',
+  'document.edit': '문서 편집',
+  'document.delete': '문서 삭제',
+  'forum.view': '게시판 조회',
+  'forum.create': '게시판 글 작성',
+  'forum.edit': '게시판 글 수정',
+  'forum.delete': '게시판 글 삭제',
+  'news.view': '뉴스 조회',
+  'news.create': '뉴스 생성',
+  'news.edit': '뉴스 편집',
+  'news.delete': '뉴스 삭제',
+  'member.manage': '멤버 관리',
+};
+
+function getPermissionLabel(key: string, apiLabels?: Record<string, string> | null): string {
+  return PERMISSION_LABELS[key] ?? apiLabels?.[key] ?? key;
+}
 
 export default function AdminRolesPage() {
   const theme = useTheme();
@@ -52,6 +80,16 @@ export default function AdminRolesPage() {
     queryKey: ['admin-roles'],
     queryFn: () => axiosInstance.get<Role[]>('/admin/roles').then((res) => res.data),
   });
+
+  const { data: permissionList } = useQuery({
+    queryKey: ['admin-permissions'],
+    queryFn: () =>
+      axiosInstance.get<PermissionListResponse>('/admin/permissions').then((res) => res.data),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const permissionGroups = permissionList?.groups ?? {};
+  const permissionApiLabels = permissionList?.labels ?? {};
 
   const saveMutation = useMutation({
     mutationFn: (data: { name: string; permissions: string[] }) =>
@@ -81,41 +119,139 @@ export default function AdminRolesPage() {
     },
   });
 
-  const openCreate = () => {
+  function openCreate() {
     setEditRole(null);
     setFormName('');
     setFormPermissions([]);
     setFormError('');
     setDialogOpen(true);
-  };
+  }
 
-  const openEdit = (role: Role) => {
+  function openEdit(role: Role) {
     setEditRole(role);
     setFormName(role.name);
     setFormPermissions(role.permissions ?? []);
     setFormError('');
     setDialogOpen(true);
-  };
+  }
 
-  const closeDialog = () => {
+  function closeDialog() {
     setDialogOpen(false);
     setEditRole(null);
     setFormError('');
-  };
+  }
 
-  const togglePermission = (key: string) => {
+  function togglePermission(key: string) {
     setFormPermissions((prev) =>
       prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key],
     );
+  }
+
+  function toggleGroupAll(groupKeys: string[]) {
+    const allSelected = groupKeys.every((k) => formPermissions.includes(k));
+    if (allSelected) {
+      setFormPermissions((prev) => prev.filter((p) => !groupKeys.includes(p)));
+    } else {
+      setFormPermissions((prev) => [...new Set([...prev, ...groupKeys])]);
+    }
+  }
+
+  const groupLabels: Record<string, string> = {
+    project: '프로젝트',
+    issue: '이슈',
+    time_entry: '시간 기록',
+    wiki: '위키',
+    document: '문서',
+    forum: '게시판',
+    news: '뉴스',
+    member: '멤버',
   };
 
-  const renderSkeleton = () => (
-    <Box sx={{ p: 2 }}>
-      {[...Array(4)].map((_, i) => (
-        <Skeleton key={i} variant="rectangular" sx={{ mb: 1, height: 48, borderRadius: 1 }} />
-      ))}
-    </Box>
-  );
+  function getGroupLabel(groupKey: string): string {
+    return permissionApiLabels?.[groupKey] ?? groupLabels[groupKey] ?? groupKey;
+  }
+
+  function renderSkeleton() {
+    return (
+      <Box sx={{ p: 2 }}>
+        {[...Array(4)].map((_, i) => (
+          <Skeleton key={i} variant="rectangular" sx={{ mb: 1, height: 48, borderRadius: 1 }} />
+        ))}
+      </Box>
+    );
+  }
+
+  function renderPermissionMatrix() {
+    const groupEntries = Object.entries(permissionGroups);
+    if (groupEntries.length === 0) {
+      return (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          권한 목록을 불러오는 중...
+        </Typography>
+      );
+    }
+
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {groupEntries.map(([groupKey, permissions]) => {
+          const groupPerms = permissions ?? [];
+          const allSelected = groupPerms.length > 0 && groupPerms.every((p) => formPermissions.includes(p));
+          const someSelected = groupPerms.some((p) => formPermissions.includes(p));
+
+          return (
+            <Accordion key={groupKey} defaultExpanded disableGutters variant="outlined">
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{ '& .MuiAccordionSummary-content': { alignItems: 'center', gap: 1 } }}
+              >
+                <Checkbox
+                  checked={allSelected}
+                  indeterminate={someSelected && !allSelected}
+                  onChange={() => toggleGroupAll(groupPerms)}
+                  onClick={(e) => e.stopPropagation()}
+                  size="small"
+                />
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  {getGroupLabel(groupKey)}
+                </Typography>
+                <Chip
+                  label={`${groupPerms.filter((p) => formPermissions.includes(p)).length}/${groupPerms.length}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ ml: 1 }}
+                />
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Box sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+                  gap: 0.5,
+                }}>
+                  {groupPerms.map((permKey) => (
+                    <FormControlLabel
+                      key={permKey}
+                      control={
+                        <Checkbox
+                          checked={formPermissions.includes(permKey)}
+                          onChange={() => togglePermission(permKey)}
+                          size="small"
+                        />
+                      }
+                      label={
+                        <Typography variant="body2">
+                          {getPermissionLabel(permKey, permissionApiLabels)}
+                        </Typography>
+                      }
+                    />
+                  ))}
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          );
+        })}
+      </Box>
+    );
+  }
 
   if (isError) {
     return (
@@ -166,7 +302,7 @@ export default function AdminRolesPage() {
                 </Box>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
                   {(role.permissions ?? []).map((p) => (
-                    <Chip key={p} label={AVAILABLE_PERMISSIONS.find((ap) => ap.key === p)?.label ?? p} size="small" variant="outlined" />
+                    <Chip key={p} label={getPermissionLabel(p, permissionApiLabels)} size="small" variant="outlined" />
                   ))}
                 </Box>
               </CardContent>
@@ -190,7 +326,7 @@ export default function AdminRolesPage() {
                   <TableCell>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {(role.permissions ?? []).map((p) => (
-                        <Chip key={p} label={AVAILABLE_PERMISSIONS.find((ap) => ap.key === p)?.label ?? p} size="small" variant="outlined" />
+                        <Chip key={p} label={getPermissionLabel(p, permissionApiLabels)} size="small" variant="outlined" />
                       ))}
                     </Box>
                   </TableCell>
@@ -211,8 +347,8 @@ export default function AdminRolesPage() {
         </TableContainer>
       )}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
+      {/* Create/Edit Dialog with Permission Matrix */}
+      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="md">
         <DialogTitle>{editRole ? '역할 수정' : '역할 추가'}</DialogTitle>
         <DialogContent>
           {formError && <Alert severity="error" sx={{ mb: 2, mt: 1 }}>{formError}</Alert>}
@@ -223,22 +359,10 @@ export default function AdminRolesPage() {
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
             />
-            <Typography variant="subtitle2">권한</Typography>
-            <FormGroup>
-              {AVAILABLE_PERMISSIONS.map((perm) => (
-                <FormControlLabel
-                  key={perm.key}
-                  control={
-                    <Checkbox
-                      checked={formPermissions.includes(perm.key)}
-                      onChange={() => togglePermission(perm.key)}
-                      size="small"
-                    />
-                  }
-                  label={perm.label}
-                />
-              ))}
-            </FormGroup>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              권한 ({formPermissions.length}개 선택)
+            </Typography>
+            {renderPermissionMatrix()}
           </Box>
         </DialogContent>
         <DialogActions>

@@ -1,14 +1,17 @@
+import './i18n';
 import { lazy, Suspense, Component, useMemo } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, CircularProgress, Box, Alert, Typography, Button } from '@mui/material';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/ko';
 import { createAppTheme } from './theme/theme';
 import { useThemeStore } from './stores/themeStore';
+import axiosInstance from './api/axiosInstance';
+import type { AppSettingsResponse } from './api/generated/model';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 import AuthLayout from './components/layout/AuthLayout';
@@ -108,7 +111,18 @@ function Loading() {
 
 function AppContent() {
   const { mode } = useThemeStore();
-  const theme = useMemo(() => createAppTheme(mode), [mode]);
+
+  const { data: appSettings } = useQuery({
+    queryKey: ['app-settings'],
+    queryFn: () =>
+      axiosInstance
+        .get<AppSettingsResponse>('/settings/app')
+        .then((res) => res.data),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const primaryColor = appSettings?.primaryColor;
+  const theme = useMemo(() => createAppTheme(mode, primaryColor), [mode, primaryColor]);
 
   return (
     <ThemeProvider theme={theme}>
