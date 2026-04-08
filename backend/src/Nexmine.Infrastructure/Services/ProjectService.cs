@@ -49,7 +49,7 @@ public class ProjectService : IProjectService
         var dtos = items.Select(p =>
         {
             var dto = _mapper.Map<ProjectDto>(p);
-            dto.EnabledModules = p.Modules.Select(m => m.ModuleName).ToList();
+            dto.EnabledModules = p.Modules.Where(m => m.ModuleName != "_configured").Select(m => m.ModuleName).ToList();
             return dto;
         }).ToList();
 
@@ -71,7 +71,8 @@ public class ProjectService : IProjectService
         if (project is null) return null;
 
         var dto = _mapper.Map<ProjectDto>(project);
-        dto.EnabledModules = project.Modules.Select(m => m.ModuleName).ToList();
+        var modules = project.Modules.Select(m => m.ModuleName).ToList();
+        dto.EnabledModules = modules.Count > 0 ? modules : AllModules.ToList();
         return dto;
     }
 
@@ -172,8 +173,19 @@ public class ProjectService : IProjectService
             throw new KeyNotFoundException($"프로젝트 '{projectIdentifier}'를 찾을 수 없습니다.");
         }
 
+        var hasAnyModuleRecord = await _dbContext.ProjectModules
+            .AnyAsync(pm => pm.ProjectId == project.Id);
+
+        if (!hasAnyModuleRecord)
+        {
+            // First access for legacy project: auto-insert all defaults
+            foreach (var mod in AllModules)
+                _dbContext.ProjectModules.Add(new ProjectModule { ProjectId = project.Id, ModuleName = mod });
+            await _dbContext.SaveChangesAsync();
+        }
+
         var enabledModules = await _dbContext.ProjectModules
-            .Where(pm => pm.ProjectId == project.Id)
+            .Where(pm => pm.ProjectId == project.Id && pm.ModuleName != "_configured")
             .Select(pm => pm.ModuleName)
             .ToListAsync();
 
@@ -208,7 +220,8 @@ public class ProjectService : IProjectService
 
         _dbContext.ProjectModules.RemoveRange(existing);
 
-        // Add new modules
+        // Add enabled modules + marker to indicate modules have been configured
+        _dbContext.ProjectModules.Add(new ProjectModule { ProjectId = project.Id, ModuleName = "_configured" });
         foreach (var mod in request.EnabledModules)
         {
             _dbContext.ProjectModules.Add(new ProjectModule { ProjectId = project.Id, ModuleName = mod });

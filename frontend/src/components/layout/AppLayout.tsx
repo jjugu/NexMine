@@ -2,10 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   Box, Drawer, AppBar, Toolbar, Typography, IconButton,
-  List, ListItemButton, ListItemIcon, ListItemText, Divider,
+  List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse,
   useMediaQuery, useTheme, Menu, MenuItem, Avatar,
   TextField, InputAdornment, LinearProgress, Tooltip,
 } from '@mui/material';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -116,6 +118,7 @@ export default function AppLayout() {
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -244,7 +247,22 @@ export default function AppLayout() {
         )}
       </Toolbar>
       <Divider />
-      <List sx={{ flex: 1, px: sidebarOpen ? 1 : 0.5, overflow: 'hidden' }}>
+      <List sx={{
+          flex: 1,
+          px: sidebarOpen ? 1 : 0.5,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'transparent transparent',
+          '&:hover': { scrollbarColor: 'auto' },
+          '&::-webkit-scrollbar': { width: 4 },
+          '&::-webkit-scrollbar-thumb': {
+            bgcolor: 'transparent',
+            borderRadius: 2,
+            transition: 'background-color 0.3s',
+          },
+          '&:hover::-webkit-scrollbar-thumb': { bgcolor: 'action.disabled' },
+        }}>
         {navItems.map((item) => (
           <Tooltip title={!sidebarOpen ? item.label : ''} placement="right" key={item.path}>
             <ListItemButton
@@ -347,7 +365,7 @@ export default function AppLayout() {
           <>
             <Divider sx={{ my: 1 }} />
             {sidebarOpen ? (
-              <ListItemButton disabled sx={{ borderRadius: 1, mb: 0.5, py: 0.5 }}>
+              <ListItemButton onClick={() => setAdminOpen(!adminOpen)} sx={{ borderRadius: 1, mb: 0.5, py: 0.5 }}>
                 <ListItemIcon sx={{ minWidth: 36 }}>
                   <AdminPanelSettingsIcon fontSize="small" />
                 </ListItemIcon>
@@ -355,10 +373,16 @@ export default function AppLayout() {
                   primary="관리자"
                   primaryTypographyProps={{ variant: 'caption', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}
                 />
+                {adminOpen ? <ExpandLessIcon fontSize="small" sx={{ color: 'text.secondary' }} /> : <ExpandMoreIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
               </ListItemButton>
             ) : (
-              <Divider sx={{ my: 0.5 }} />
+              <Tooltip title="관리자" placement="right">
+                <ListItemButton onClick={() => setAdminOpen(!adminOpen)} sx={{ borderRadius: 1, mb: 0.5, justifyContent: 'center', px: 1 }}>
+                  <AdminPanelSettingsIcon fontSize="small" />
+                </ListItemButton>
+              </Tooltip>
             )}
+            <Collapse in={adminOpen} timeout="auto" unmountOnExit>
             {adminNavItems.map((item) => (
               <Tooltip title={!sidebarOpen ? item.label : ''} placement="right" key={item.path}>
               <ListItemButton
@@ -367,13 +391,14 @@ export default function AppLayout() {
                   navigate(item.path);
                   if (isMobile) setMobileOpen(false);
                 }}
-                sx={{ borderRadius: 1, mb: 0.5, pl: sidebarOpen ? 2 : 1, justifyContent: sidebarOpen ? 'initial' : 'center', px: sidebarOpen ? 2 : 1 }}
+                sx={{ borderRadius: 1, mb: 0.5, pl: sidebarOpen ? 3 : 1, justifyContent: sidebarOpen ? 'initial' : 'center', px: sidebarOpen ? 2 : 1 }}
               >
                 <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>{item.icon}</ListItemIcon>
                 {sidebarOpen && <ListItemText primary={item.label} />}
               </ListItemButton>
               </Tooltip>
             ))}
+            </Collapse>
           </>
         )}
       </List>

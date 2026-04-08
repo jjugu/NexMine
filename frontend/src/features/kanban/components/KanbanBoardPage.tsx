@@ -43,7 +43,7 @@ function fetchKanbanIssues(identifier: string) {
   // statusId / position fields to IssueDto in the kanban context.
   return axiosInstance
     .get<KanbanIssuesResponse>(`/projects/${identifier}/issues`, {
-      params: { Page: 1, PageSize: 500 },
+      params: { Page: 1, PageSize: 100 },
     })
     .then((res) => res.data);
 }
