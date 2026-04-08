@@ -104,6 +104,16 @@ public class IssuesController : ControllerBase
         return Ok(issue);
     }
 
+    [HttpPut("bulk-update")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> BulkUpdateAsync([FromBody] BulkUpdateIssuesRequest request)
+    {
+        var userId = User.GetUserId();
+        var updatedCount = await _issueService.BulkUpdateAsync(request, userId);
+        return Ok(new { updatedCount });
+    }
+
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

@@ -26,6 +26,7 @@ const ProjectSettingsPage = lazy(() => import('./features/projects/components/Pr
 const KanbanBoardPage = lazy(() => import('./features/kanban/components/KanbanBoardPage'));
 const GanttChartPage = lazy(() => import('./features/gantt/components/GanttChartPage'));
 const CalendarPage = lazy(() => import('./features/calendar/components/CalendarPage'));
+const RoadmapPage = lazy(() => import('./features/roadmap/components/RoadmapPage'));
 const WikiIndexPage = lazy(() => import('./features/wiki/components/WikiIndexPage'));
 const WikiPageEditor = lazy(() => import('./features/wiki/components/WikiPageEditor'));
 const DocumentListPage = lazy(() => import('./features/documents/components/DocumentListPage'));
@@ -122,6 +123,7 @@ function AppContent() {
                 <Route path="/projects/:identifier/kanban" element={<KanbanBoardPage />} />
                 <Route path="/projects/:identifier/gantt" element={<GanttChartPage />} />
                 <Route path="/projects/:identifier/calendar" element={<CalendarPage />} />
+                <Route path="/projects/:identifier/roadmap" element={<RoadmapPage />} />
                 <Route path="/projects/:identifier/wiki" element={<WikiIndexPage />} />
                 <Route path="/projects/:identifier/wiki/new" element={<WikiPageEditor />} />
                 <Route path="/projects/:identifier/wiki/:slug" element={<WikiIndexPage />} />

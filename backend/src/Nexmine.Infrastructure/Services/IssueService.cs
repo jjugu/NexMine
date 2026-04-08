@@ -530,6 +530,140 @@ public class IssueService : IIssueService
         return positionDto;
     }
 
+    public async Task<int> BulkUpdateAsync(BulkUpdateIssuesRequest request, int userId)
+    {
+        var issues = await _dbContext.Issues
+            .Include(i => i.Status)
+            .Include(i => i.Tracker)
+            .Where(i => request.IssueIds.Contains(i.Id))
+            .ToListAsync();
+
+        if (issues.Count == 0)
+            return 0;
+
+        // Pre-load the new status if changing status
+        IssueStatus? newStatus = null;
+        if (request.StatusId.HasValue)
+        {
+            newStatus = await _dbContext.IssueStatuses.FindAsync(request.StatusId.Value)
+                ?? throw new KeyNotFoundException("상태를 찾을 수 없습니다.");
+        }
+
+        foreach (var issue in issues)
+        {
+            var journalDetails = new List<JournalDetail>();
+
+            if (request.StatusId.HasValue && request.StatusId.Value != issue.StatusId)
+            {
+                journalDetails.Add(new JournalDetail
+                {
+                    PropertyName = nameof(Issue.StatusId),
+                    OldValue = issue.StatusId.ToString(),
+                    NewValue = request.StatusId.Value.ToString()
+                });
+                issue.StatusId = request.StatusId.Value;
+
+                // Auto-set DoneRatio=100 when status changes to IsClosed=true
+                if (newStatus is not null && newStatus.IsClosed && issue.DoneRatio != 100)
+                {
+                    journalDetails.Add(new JournalDetail
+                    {
+                        PropertyName = nameof(Issue.DoneRatio),
+                        OldValue = issue.DoneRatio.ToString(),
+                        NewValue = "100"
+                    });
+                    issue.DoneRatio = 100;
+                }
+            }
+
+            if (request.PriorityId.HasValue && request.PriorityId.Value != issue.PriorityId)
+            {
+                journalDetails.Add(new JournalDetail
+                {
+                    PropertyName = nameof(Issue.PriorityId),
+                    OldValue = issue.PriorityId.ToString(),
+                    NewValue = request.PriorityId.Value.ToString()
+                });
+                issue.PriorityId = request.PriorityId.Value;
+            }
+
+            if (request.TrackerId.HasValue && request.TrackerId.Value != issue.TrackerId)
+            {
+                journalDetails.Add(new JournalDetail
+                {
+                    PropertyName = nameof(Issue.TrackerId),
+                    OldValue = issue.TrackerId.ToString(),
+                    NewValue = request.TrackerId.Value.ToString()
+                });
+                issue.TrackerId = request.TrackerId.Value;
+            }
+
+            if (request.AssignedToId.HasValue)
+            {
+                // 0 means unassign
+                int? newAssignedToId = request.AssignedToId.Value == 0 ? null : request.AssignedToId.Value;
+                if (newAssignedToId != issue.AssignedToId)
+                {
+                    journalDetails.Add(new JournalDetail
+                    {
+                        PropertyName = nameof(Issue.AssignedToId),
+                        OldValue = issue.AssignedToId?.ToString(),
+                        NewValue = newAssignedToId?.ToString()
+                    });
+                    issue.AssignedToId = newAssignedToId;
+                }
+            }
+
+            if (request.VersionId.HasValue)
+            {
+                // 0 means remove version
+                int? newVersionId = request.VersionId.Value == 0 ? null : request.VersionId.Value;
+                if (newVersionId != issue.VersionId)
+                {
+                    journalDetails.Add(new JournalDetail
+                    {
+                        PropertyName = nameof(Issue.VersionId),
+                        OldValue = issue.VersionId?.ToString(),
+                        NewValue = newVersionId?.ToString()
+                    });
+                    issue.VersionId = newVersionId;
+                }
+            }
+
+            if (request.CategoryId.HasValue)
+            {
+                // 0 means remove category
+                int? newCategoryId = request.CategoryId.Value == 0 ? null : request.CategoryId.Value;
+                if (newCategoryId != issue.CategoryId)
+                {
+                    journalDetails.Add(new JournalDetail
+                    {
+                        PropertyName = nameof(Issue.CategoryId),
+                        OldValue = issue.CategoryId?.ToString(),
+                        NewValue = newCategoryId?.ToString()
+                    });
+                    issue.CategoryId = newCategoryId;
+                }
+            }
+
+            // Create journal if there are changes
+            if (journalDetails.Count > 0)
+            {
+                var journal = new Journal
+                {
+                    IssueId = issue.Id,
+                    UserId = userId,
+                    Notes = "일괄 수정",
+                    Details = journalDetails
+                };
+                _dbContext.Journals.Add(journal);
+            }
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return issues.Count;
+    }
+
     private static IssueDetailDto MapToDetailDto(Issue issue)
     {
         return new IssueDetailDto

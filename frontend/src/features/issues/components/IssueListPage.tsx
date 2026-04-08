@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Button, TextField, InputAdornment,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -8,7 +8,7 @@ import {
   CardActionArea, useMediaQuery, useTheme, Grid,
   MenuItem, Select, FormControl, InputLabel, IconButton,
   Breadcrumbs, Link, Collapse, LinearProgress, TableSortLabel,
-  CircularProgress, Tooltip,
+  CircularProgress, Tooltip, Checkbox, Snackbar, Alert,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -16,9 +16,10 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DownloadIcon from '@mui/icons-material/Download';
 import BugReportIcon from '@mui/icons-material/BugReport';
+import CloseIcon from '@mui/icons-material/Close';
 import { QueryState, TableSkeleton, CardSkeleton } from '../../../components/common/QueryState';
 import axiosInstance from '../../../api/axiosInstance';
-import type { IssueDtoPagedResult, ProjectDto } from '../../../api/generated/model';
+import type { IssueDtoPagedResult, ProjectDto, BulkUpdateIssuesRequest } from '../../../api/generated/model';
 import {
   useTrackers,
   useIssueStatuses,
@@ -51,6 +52,18 @@ export default function IssueListPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [searchParams, setSearchParams] = useSearchParams();
   const [isFilterOpen, setIsFilterOpen] = useState(!isMobile);
+  const queryClient = useQueryClient();
+
+  // Bulk edit state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkStatusId, setBulkStatusId] = useState('');
+  const [bulkPriorityId, setBulkPriorityId] = useState('');
+  const [bulkAssignedToId, setBulkAssignedToId] = useState('');
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
 
   // URL params
   const page = parseInt(searchParams.get('page') ?? '1', 10);
@@ -65,6 +78,24 @@ export default function IssueListPage() {
 
   const [searchInput, setSearchInput] = useState(searchFromUrl);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Bulk update mutation
+  const bulkUpdateMutation = useMutation({
+    mutationFn: (data: BulkUpdateIssuesRequest) =>
+      axiosInstance.put('/issues/bulk-update', data),
+    onSuccess: (res) => {
+      const count = res.data?.updatedCount ?? selectedIds.size;
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      setSelectedIds(new Set());
+      setBulkStatusId('');
+      setBulkPriorityId('');
+      setBulkAssignedToId('');
+      setSnackbar({ open: true, message: `${count}개 이슈가 업데이트되었습니다.`, severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: '일괄 업데이트에 실패했습니다.', severity: 'error' });
+    },
+  });
 
   // Reference data
   const trackersQuery = useTrackers();
@@ -168,6 +199,49 @@ export default function IssueListPage() {
   function handleNewIssue() {
     navigate(`/projects/${identifier}/issues/new`);
   }
+
+  function handleSelectAll(checked: boolean) {
+    if (checked) {
+      setSelectedIds(new Set(items.filter((i) => i.id != null).map((i) => i.id!)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  }
+
+  function handleSelectOne(issueId: number, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(issueId);
+      } else {
+        next.delete(issueId);
+      }
+      return next;
+    });
+  }
+
+  function handleBulkApply() {
+    if (selectedIds.size === 0) return;
+    const request: BulkUpdateIssuesRequest = {
+      issueIds: Array.from(selectedIds),
+      statusId: bulkStatusId ? Number(bulkStatusId) : null,
+      priorityId: bulkPriorityId ? Number(bulkPriorityId) : null,
+      assignedToId: bulkAssignedToId ? Number(bulkAssignedToId) : null,
+    };
+    // Only submit if at least one field is set
+    if (!request.statusId && !request.priorityId && !request.assignedToId) return;
+    bulkUpdateMutation.mutate(request);
+  }
+
+  function handleBulkCancel() {
+    setSelectedIds(new Set());
+    setBulkStatusId('');
+    setBulkPriorityId('');
+    setBulkAssignedToId('');
+  }
+
+  const isAllSelected = items.length > 0 && items.every((i) => i.id != null && selectedIds.has(i.id));
+  const isIndeterminate = selectedIds.size > 0 && !isAllSelected;
 
   const handleExportCsv = useCallback(async () => {
     if (!identifier) return;
@@ -351,6 +425,81 @@ export default function IssueListPage() {
         </Paper>
       </Collapse>
 
+      {/* Bulk edit toolbar */}
+      {selectedIds.size > 0 && (
+        <Paper
+          elevation={3}
+          sx={{
+            position: 'sticky',
+            top: 64,
+            zIndex: 10,
+            p: 1.5,
+            mb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            flexWrap: 'wrap',
+            bgcolor: 'background.paper',
+            borderRadius: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {selectedIds.size}개 선택됨
+          </Typography>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>상태</InputLabel>
+            <Select
+              value={bulkStatusId}
+              label="상태"
+              onChange={(e: SelectChangeEvent) => setBulkStatusId(e.target.value)}
+            >
+              <MenuItem value="">-</MenuItem>
+              {(statusesQuery.data ?? []).map((s) => (
+                <MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>우선순위</InputLabel>
+            <Select
+              value={bulkPriorityId}
+              label="우선순위"
+              onChange={(e: SelectChangeEvent) => setBulkPriorityId(e.target.value)}
+            >
+              <MenuItem value="">-</MenuItem>
+              {(prioritiesQuery.data ?? []).map((p) => (
+                <MenuItem key={p.id} value={String(p.id)}>{p.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>담당자</InputLabel>
+            <Select
+              value={bulkAssignedToId}
+              label="담당자"
+              onChange={(e: SelectChangeEvent) => setBulkAssignedToId(e.target.value)}
+            >
+              <MenuItem value="">-</MenuItem>
+              {(membersQuery.data ?? []).map((m) => (
+                <MenuItem key={m.userId} value={String(m.userId)}>{m.username}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleBulkApply}
+            disabled={bulkUpdateMutation.isPending || (!bulkStatusId && !bulkPriorityId && !bulkAssignedToId)}
+          >
+            {bulkUpdateMutation.isPending ? <CircularProgress size={16} sx={{ mr: 0.5 }} /> : null}
+            적용
+          </Button>
+          <IconButton size="small" onClick={handleBulkCancel}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Paper>
+      )}
+
       <QueryState
         isLoading={isLoading}
         isError={isError}
@@ -388,6 +537,14 @@ export default function IssueListPage() {
             <Table size="small">
               <TableHead>
                 <TableRow>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={isAllSelected}
+                      indeterminate={isIndeterminate}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      size="small"
+                    />
+                  </TableCell>
                   {columns.map((col) => (
                     <TableCell key={col.field} sx={{ minWidth: col.minWidth }}>
                       <TableSortLabel
@@ -406,9 +563,20 @@ export default function IssueListPage() {
                   <TableRow
                     key={issue.id}
                     hover
+                    selected={issue.id != null && selectedIds.has(issue.id)}
                     sx={{ cursor: 'pointer' }}
                     onClick={() => handleRowClick(issue.id)}
                   >
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={issue.id != null && selectedIds.has(issue.id)}
+                        size="small"
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          if (issue.id != null) handleSelectOne(issue.id, e.target.checked);
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">
                         #{issue.id}
@@ -480,38 +648,48 @@ export default function IssueListPage() {
             <Grid container spacing={1.5}>
               {items.map((issue) => (
                 <Grid key={issue.id} size={{ xs: 12 }}>
-                  <Card variant="outlined">
-                    <CardActionArea onClick={() => handleRowClick(issue.id)}>
-                      <CardContent sx={{ py: 1.5, px: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                          <Box sx={{ flex: 1, mr: 1 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              #{issue.id}
-                            </Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                              {issue.subject}
-                            </Typography>
+                  <Card variant="outlined" sx={{ ...(issue.id != null && selectedIds.has(issue.id) ? { borderColor: 'primary.main', bgcolor: 'action.selected' } : {}) }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                      <Checkbox
+                        checked={issue.id != null && selectedIds.has(issue.id)}
+                        size="small"
+                        sx={{ mt: 0.5, ml: 0.5 }}
+                        onChange={(e) => {
+                          if (issue.id != null) handleSelectOne(issue.id, e.target.checked);
+                        }}
+                      />
+                      <CardActionArea onClick={() => handleRowClick(issue.id)}>
+                        <CardContent sx={{ py: 1.5, px: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                            <Box sx={{ flex: 1, mr: 1 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                #{issue.id}
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {issue.subject}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                              <Chip
+                                label={issue.statusName ?? '-'}
+                                size="small"
+                                color="success"
+                                variant="outlined"
+                              />
+                              <Chip
+                                label={issue.priorityName ?? '-'}
+                                size="small"
+                                color={getPriorityColor(issue.priorityName)}
+                                variant="outlined"
+                              />
+                            </Box>
                           </Box>
-                          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                            <Chip
-                              label={issue.statusName ?? '-'}
-                              size="small"
-                              color="success"
-                              variant="outlined"
-                            />
-                            <Chip
-                              label={issue.priorityName ?? '-'}
-                              size="small"
-                              color={getPriorityColor(issue.priorityName)}
-                              variant="outlined"
-                            />
-                          </Box>
-                        </Box>
-                        <Typography variant="caption" color="text.secondary">
-                          {issue.trackerName} &middot; {issue.assignedToName ?? '미배정'} &middot; {formatDate(issue.updatedAt)}
-                        </Typography>
-                      </CardContent>
-                    </CardActionArea>
+                          <Typography variant="caption" color="text.secondary">
+                            {issue.trackerName} &middot; {issue.assignedToName ?? '미배정'} &middot; {formatDate(issue.updatedAt)}
+                          </Typography>
+                        </CardContent>
+                      </CardActionArea>
+                    </Box>
                   </Card>
                 </Grid>
               ))}
@@ -530,6 +708,22 @@ export default function IssueListPage() {
           </>
         )}
       </QueryState>
+
+      {/* Snackbar for bulk update feedback */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

@@ -33,6 +33,7 @@ import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import TuneIcon from '@mui/icons-material/Tune';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import FlagIcon from '@mui/icons-material/Flag';
 import HistoryIcon from '@mui/icons-material/History';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import { useIsFetching } from '@tanstack/react-query';
@@ -75,6 +76,7 @@ function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
     { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar` },
     { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki` },
     { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents` },
+    { label: '로드맵', icon: <FlagIcon />, path: `/projects/${identifier}/roadmap` },
     { label: '활동', icon: <HistoryIcon />, path: `/projects/${identifier}/activity` },
     { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions` },
     { label: '설정', icon: <SettingsIcon />, path: `/projects/${identifier}/settings` },

@@ -9,6 +9,7 @@ using Nexmine.Application.Features.Export.Interfaces;
 using Nexmine.Application.Features.Issues.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
 using Nexmine.Application.Features.Reports.Interfaces;
+using Nexmine.Application.Features.Roadmap.Interfaces;
 using Nexmine.Application.Features.Search.Interfaces;
 using Nexmine.Application.Features.Wiki.Interfaces;
 using Nexmine.Application.Features.Workflows.Interfaces;
@@ -59,6 +60,9 @@ public static class DependencyInjection
         // Export & Reports
         services.AddScoped<IExportService, ExportService>();
         services.AddScoped<IReportService, ReportService>();
+
+        // Roadmap
+        services.AddScoped<IRoadmapService, RoadmapService>();
 
         return services;
     }
