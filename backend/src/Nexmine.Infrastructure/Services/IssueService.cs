@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexmine.Application.Common.Models;
 using Nexmine.Application.Features.CustomFields.Dtos;
 using Nexmine.Application.Features.CustomFields.Interfaces;
+using Nexmine.Application.Features.Integrations.Interfaces;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
 using Nexmine.Application.Features.Realtime.Interfaces;
@@ -23,6 +24,7 @@ public class IssueService : IIssueService
     private readonly IWorkflowService _workflowService;
     private readonly IWatcherService _watcherService;
     private readonly IRealtimeNotificationService _realtimeNotificationService;
+    private readonly IGoogleChatService _googleChatService;
 
     private static readonly string[] TrackedFields =
     [
@@ -47,7 +49,8 @@ public class IssueService : IIssueService
         ICustomFieldService customFieldService,
         IWorkflowService workflowService,
         IWatcherService watcherService,
-        IRealtimeNotificationService realtimeNotificationService)
+        IRealtimeNotificationService realtimeNotificationService,
+        IGoogleChatService googleChatService)
     {
         _dbContext = dbContext;
         _mapper = mapper;
@@ -55,6 +58,7 @@ public class IssueService : IIssueService
         _workflowService = workflowService;
         _watcherService = watcherService;
         _realtimeNotificationService = realtimeNotificationService;
+        _googleChatService = googleChatService;
     }
 
     public async Task<PagedResult<IssueDto>> ListAsync(string projectIdentifier, IssueFilterParams filterParams)
@@ -282,6 +286,12 @@ public class IssueService : IIssueService
                 created.Id);
         }
 
+        // Google Chat webhook notification (fire-and-forget)
+        var trackerName = created.Tracker?.Name ?? "";
+        var priorityName = created.Priority?.Name ?? "";
+        _ = _googleChatService.SendMessageAsync(project.Id,
+            $"\ud83c\udd95 *새 이슈* #{created.Id} {created.Subject}\n\ud83d\udc64 {authorName}\n\ud83d\udccc {trackerName} | {priorityName}");
+
         return createdDto;
     }
 
@@ -479,6 +489,10 @@ public class IssueService : IIssueService
                     project.Identifier,
                     updated.Id);
             }
+
+            // Google Chat webhook notification (fire-and-forget)
+            _ = _googleChatService.SendMessageAsync(project.Id,
+                $"\u270f\ufe0f *이슈 수정* #{updated.Id} {updated.Subject}\n\ud83d\udc64 {userName}");
         }
 
         return updatedDto;

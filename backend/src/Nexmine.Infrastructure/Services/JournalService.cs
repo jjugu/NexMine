@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Nexmine.Application.Features.Integrations.Interfaces;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
 using Nexmine.Application.Features.Realtime.Interfaces;
@@ -11,11 +12,16 @@ public class JournalService : IJournalService
 {
     private readonly NexmineDbContext _dbContext;
     private readonly IRealtimeNotificationService _realtimeNotificationService;
+    private readonly IGoogleChatService _googleChatService;
 
-    public JournalService(NexmineDbContext dbContext, IRealtimeNotificationService realtimeNotificationService)
+    public JournalService(
+        NexmineDbContext dbContext,
+        IRealtimeNotificationService realtimeNotificationService,
+        IGoogleChatService googleChatService)
     {
         _dbContext = dbContext;
         _realtimeNotificationService = realtimeNotificationService;
+        _googleChatService = googleChatService;
     }
 
     public async Task<List<JournalDto>> ListByIssueAsync(int issueId)
@@ -75,6 +81,10 @@ public class JournalService : IJournalService
             await _realtimeNotificationService.NotifyIssueCommentedAsync(
                 issue.Project.Identifier, issueId, issue.Subject, userName, request.Notes);
             await _realtimeNotificationService.NotifyIssueChangedAsync(issueId, userName);
+
+            // Google Chat webhook notification (fire-and-forget)
+            _ = _googleChatService.SendMessageAsync(issue.ProjectId,
+                $"\ud83d\udcac *댓글* #{issueId} {issue.Subject}\n\ud83d\udc64 {userName}\n{request.Notes}");
         }
 
         return new JournalDto

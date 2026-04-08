@@ -36,6 +36,9 @@ var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, "uploads");
 if (!Directory.Exists(uploadsPath))
     Directory.CreateDirectory(uploadsPath);
 
+// HttpClient factory (for external webhook calls)
+builder.Services.AddHttpClient();
+
 // Application & Infrastructure DI
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(uploadsPath);

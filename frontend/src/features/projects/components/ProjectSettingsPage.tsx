@@ -22,6 +22,7 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import SendIcon from '@mui/icons-material/Send';
 import axiosInstance from '../../../api/axiosInstance';
 import CopyProjectDialog from './CopyProjectDialog';
 import type {
@@ -821,6 +822,144 @@ function CopyProjectSection({ project }: { project: ProjectDto | undefined }) {
   );
 }
 
+function WebhookSection({ identifier }: { identifier: string }) {
+  const queryClient = useQueryClient();
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false, message: '', severity: 'success',
+  });
+
+  const webhookQuery = useQuery({
+    queryKey: ['project-webhook', identifier],
+    queryFn: () =>
+      axiosInstance
+        .get<{ url: string | null }>(`/Projects/${identifier}/webhook`)
+        .then((r) => r.data),
+    enabled: !!identifier,
+  });
+
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [initialized, setInitialized] = useState(false);
+
+  if (webhookQuery.data && !initialized) {
+    setWebhookUrl(webhookQuery.data.url ?? '');
+    setInitialized(true);
+  }
+
+  const [prevIdentifier, setPrevIdentifier] = useState(identifier);
+  if (prevIdentifier !== identifier) {
+    setPrevIdentifier(identifier);
+    setInitialized(false);
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      axiosInstance.put(`/Projects/${identifier}/webhook`, {
+        url: webhookUrl.trim() || null,
+      }),
+    onSuccess: () => {
+      setSnackbar({ open: true, message: 'Webhook URL이 저장되었습니다.', severity: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['project-webhook', identifier] });
+    },
+    onError: (err: unknown) => {
+      const axiosError = err as { response?: { status?: number; data?: { detail?: string; title?: string } } };
+      if (axiosError.response?.status === 403) {
+        setSnackbar({ open: true, message: '권한이 없습니다.', severity: 'error' });
+      } else {
+        setSnackbar({
+          open: true,
+          message: axiosError.response?.data?.detail || axiosError.response?.data?.title || 'Webhook 저장에 실패했습니다.',
+          severity: 'error',
+        });
+      }
+    },
+  });
+
+  const testMutation = useMutation({
+    mutationFn: () =>
+      axiosInstance.post(`/Projects/${identifier}/webhook/test`),
+    onSuccess: () => {
+      setSnackbar({ open: true, message: '테스트 메시지를 전송했습니다.', severity: 'success' });
+    },
+    onError: (err: unknown) => {
+      const axiosError = err as { response?: { status?: number; data?: { detail?: string; title?: string } } };
+      if (axiosError.response?.status === 400) {
+        setSnackbar({
+          open: true,
+          message: axiosError.response?.data?.detail || 'Webhook URL을 먼저 저장해주세요.',
+          severity: 'error',
+        });
+      } else if (axiosError.response?.status === 403) {
+        setSnackbar({ open: true, message: '권한이 없습니다.', severity: 'error' });
+      } else {
+        setSnackbar({
+          open: true,
+          message: axiosError.response?.data?.detail || axiosError.response?.data?.title || '테스트 전송에 실패했습니다.',
+          severity: 'error',
+        });
+      }
+    },
+  });
+
+  const isDirty = initialized && webhookUrl !== (webhookQuery.data?.url ?? '');
+
+  if (webhookQuery.isLoading) {
+    return <Skeleton variant="rectangular" height={150} sx={{ borderRadius: 1, mb: 3 }} />;
+  }
+
+  return (
+    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+      <Typography variant="h6" sx={{ mb: 1 }}>Google Chat 연동</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Google Chat 스페이스에서 Webhook URL을 생성하여 입력하세요.
+        이슈 생성, 수정, 댓글 작성 시 알림이 전송됩니다.
+      </Typography>
+
+      <TextField
+        label="Webhook URL"
+        fullWidth
+        value={webhookUrl}
+        onChange={(e) => setWebhookUrl(e.target.value)}
+        placeholder="https://chat.googleapis.com/v1/spaces/..."
+        size="small"
+        sx={{ mb: 2 }}
+      />
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+        <Button
+          variant="outlined"
+          startIcon={testMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+          onClick={() => testMutation.mutate()}
+          disabled={testMutation.isPending || saveMutation.isPending}
+        >
+          {testMutation.isPending ? '전송 중...' : '테스트 전송'}
+        </Button>
+        <Button
+          variant="contained"
+          startIcon={saveMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending || !isDirty}
+        >
+          {saveMutation.isPending ? '저장 중...' : '저장'}
+        </Button>
+      </Box>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Paper>
+  );
+}
+
 function ArchiveSection({ identifier }: { identifier: string }) {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -945,6 +1084,7 @@ export default function ProjectSettingsPage() {
       <MembersSection identifier={identifier} />
       <CategoriesSection identifier={identifier} />
       <ModulesSection identifier={identifier} />
+      <WebhookSection identifier={identifier} />
       <CopyProjectSection project={projectQuery.data} />
       <ArchiveSection identifier={identifier} />
     </Box>

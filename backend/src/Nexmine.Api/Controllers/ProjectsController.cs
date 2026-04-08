@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexmine.Api.Extensions;
 using Nexmine.Api.Filters;
+using Nexmine.Application.Features.Integrations.Dtos;
+using Nexmine.Application.Features.Integrations.Interfaces;
 using Nexmine.Application.Features.Projects.Dtos;
 using Nexmine.Application.Features.Projects.Interfaces;
 
@@ -13,10 +15,12 @@ namespace Nexmine.Api.Controllers;
 public class ProjectsController : ControllerBase
 {
     private readonly IProjectService _projectService;
+    private readonly IGoogleChatService _googleChatService;
 
-    public ProjectsController(IProjectService projectService)
+    public ProjectsController(IProjectService projectService, IGoogleChatService googleChatService)
     {
         _projectService = projectService;
+        _googleChatService = googleChatService;
     }
 
     [HttpGet]
@@ -135,5 +139,84 @@ public class ProjectsController : ControllerBase
         await _projectService.UpdateModulesAsync(identifier, request);
         var modules = await _projectService.GetModulesAsync(identifier);
         return Ok(modules);
+    }
+
+    [HttpGet("{identifier}/webhook")]
+    [ProjectManager]
+    [ProducesResponseType(typeof(WebhookSettingDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetWebhookAsync(string identifier)
+    {
+        var project = await _projectService.GetByIdentifierAsync(identifier);
+        if (project is null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "찾을 수 없음",
+                Detail = $"프로젝트 '{identifier}'를 찾을 수 없습니다."
+            });
+        }
+
+        var url = await _googleChatService.GetWebhookUrlAsync(project.Id);
+        return Ok(new WebhookSettingDto { Url = url });
+    }
+
+    [HttpPut("{identifier}/webhook")]
+    [ProjectManager]
+    [ProducesResponseType(typeof(WebhookSettingDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UpdateWebhookAsync(string identifier, [FromBody] WebhookSettingDto request)
+    {
+        var project = await _projectService.GetByIdentifierAsync(identifier);
+        if (project is null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "찾을 수 없음",
+                Detail = $"프로젝트 '{identifier}'를 찾을 수 없습니다."
+            });
+        }
+
+        await _googleChatService.SetWebhookUrlAsync(project.Id, request.Url);
+        return Ok(new WebhookSettingDto { Url = request.Url });
+    }
+
+    [HttpPost("{identifier}/webhook/test")]
+    [ProjectManager]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> TestWebhookAsync(string identifier)
+    {
+        var project = await _projectService.GetByIdentifierAsync(identifier);
+        if (project is null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "찾을 수 없음",
+                Detail = $"프로젝트 '{identifier}'를 찾을 수 없습니다."
+            });
+        }
+
+        var url = await _googleChatService.GetWebhookUrlAsync(project.Id);
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Webhook 미설정",
+                Detail = "Webhook URL이 설정되지 않았습니다. 먼저 URL을 저장해주세요."
+            });
+        }
+
+        await _googleChatService.SendMessageAsync(project.Id,
+            $"Nexmine 연동 테스트 메시지입니다.\n프로젝트: {project.Name}");
+        return Ok(new { message = "테스트 메시지를 전송했습니다." });
     }
 }
