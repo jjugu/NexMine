@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nexmine.Infrastructure.Data;
 
@@ -10,9 +11,11 @@ using Nexmine.Infrastructure.Data;
 namespace Nexmine.Infrastructure.Migrations
 {
     [DbContext(typeof(NexmineDbContext))]
-    partial class NexmineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260408152133_AddNotifications")]
+    partial class AddNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.14");
@@ -910,23 +913,6 @@ namespace Nexmine.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Projects");
-                });
-
-            modelBuilder.Entity("Nexmine.Domain.Entities.ProjectFavorite", b =>
-                {
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("UserId", "ProjectId");
-
-                    b.HasIndex("ProjectId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ProjectFavorites");
                 });
 
             modelBuilder.Entity("Nexmine.Domain.Entities.ProjectMembership", b =>
@@ -1969,25 +1955,6 @@ namespace Nexmine.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Actor");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Nexmine.Domain.Entities.ProjectFavorite", b =>
-                {
-                    b.HasOne("Nexmine.Domain.Entities.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Nexmine.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
 
                     b.Navigation("User");
                 });

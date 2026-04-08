@@ -32,7 +32,8 @@
     "roadmap": "로드맵",
     "versions": "버전",
     "settings": "설정",
-    "preferences": "환경설정"
+    "preferences": "환경설정",
+    "favorites": "즐겨찾기"
   },
   "admin": {
     "title": "관리자",

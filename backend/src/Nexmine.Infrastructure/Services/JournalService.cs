@@ -1,27 +1,35 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Nexmine.Application.Features.Integrations.Interfaces;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
+using Nexmine.Application.Features.Notifications.Interfaces;
 using Nexmine.Application.Features.Realtime.Interfaces;
 using Nexmine.Domain.Entities;
 using Nexmine.Infrastructure.Data;
 
 namespace Nexmine.Infrastructure.Services;
 
-public class JournalService : IJournalService
+public partial class JournalService : IJournalService
 {
     private readonly NexmineDbContext _dbContext;
     private readonly IRealtimeNotificationService _realtimeNotificationService;
     private readonly IGoogleChatService _googleChatService;
+    private readonly INotificationService _notificationService;
+
+    [GeneratedRegex(@"@(\w+)")]
+    private static partial Regex MentionRegex();
 
     public JournalService(
         NexmineDbContext dbContext,
         IRealtimeNotificationService realtimeNotificationService,
-        IGoogleChatService googleChatService)
+        IGoogleChatService googleChatService,
+        INotificationService notificationService)
     {
         _dbContext = dbContext;
         _realtimeNotificationService = realtimeNotificationService;
         _googleChatService = googleChatService;
+        _notificationService = notificationService;
     }
 
     public async Task<List<JournalDto>> ListByIssueAsync(int issueId)
@@ -85,6 +93,43 @@ public class JournalService : IJournalService
             // Google Chat webhook notification (fire-and-forget)
             _ = _googleChatService.SendMessageAsync(issue.ProjectId,
                 $"\ud83d\udcac *댓글* #{issueId} {issue.Subject}\n\ud83d\udc64 {userName}\n{request.Notes}");
+
+            // Parse @mentions and send notifications
+            if (!string.IsNullOrWhiteSpace(request.Notes))
+            {
+                var matches = MentionRegex().Matches(request.Notes);
+                var mentionedUsernames = matches
+                    .Select(m => m.Groups[1].Value)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (mentionedUsernames.Count > 0)
+                {
+                    var mentionedUsers = await _dbContext.Users
+                        .Where(u => mentionedUsernames.Contains(u.Username) && u.IsActive)
+                        .ToListAsync();
+
+                    foreach (var mentionedUser in mentionedUsers)
+                    {
+                        var linkUrl = $"/projects/{issue.Project.Identifier}/issues/{issueId}";
+
+                        await _notificationService.CreateNotificationAsync(
+                            mentionedUser.Id,
+                            "mentioned",
+                            $"{userName}님이 이슈 #{issueId}에서 멘션했습니다",
+                            request.Notes,
+                            linkUrl,
+                            userId);
+
+                        await _realtimeNotificationService.NotifyUserAsync(
+                            mentionedUser.Id,
+                            "mentioned",
+                            $"{userName}님이 이슈 #{issueId}에서 멘션했습니다",
+                            issue.Project.Identifier,
+                            issueId);
+                    }
+                }
+            }
         }
 
         return new JournalDto

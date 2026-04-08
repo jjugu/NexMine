@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nexmine.Infrastructure.Data;
 
@@ -10,9 +11,11 @@ using Nexmine.Infrastructure.Data;
 namespace Nexmine.Infrastructure.Migrations
 {
     [DbContext(typeof(NexmineDbContext))]
-    partial class NexmineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260408152936_AddProjectFavorites")]
+    partial class AddProjectFavorites
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.14");

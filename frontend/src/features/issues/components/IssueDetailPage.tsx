@@ -43,6 +43,42 @@ import {
   PROPERTY_NAME_LABELS, ACTIVITY_TYPE_LABELS,
 } from '../utils/issueUtils';
 
+// ---------- @mention highlight ----------
+function renderMentionText(text: string): React.ReactNode {
+  const mentionRegex = /@(\w+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = mentionRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <Box
+        key={match.index}
+        component="span"
+        sx={{
+          fontWeight: 600,
+          color: 'primary.main',
+          bgcolor: 'primary.50',
+          borderRadius: 0.5,
+          px: 0.5,
+        }}
+      >
+        {match[0]}
+      </Box>,
+    );
+    lastIndex = mentionRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+}
+
 // ---------- schemas ----------
 const updateIssueSchema = z.object({
   trackerId: z.number().optional().nullable(),
@@ -218,7 +254,7 @@ function JournalTimeline({ issueId }: { issueId: number }) {
           {journal.notes && (
             <Box sx={{ pl: 4.5 }}>
               <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                {journal.notes}
+                {renderMentionText(journal.notes)}
               </Typography>
             </Box>
           )}

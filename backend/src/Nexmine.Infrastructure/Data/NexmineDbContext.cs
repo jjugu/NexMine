@@ -46,6 +46,8 @@ public class NexmineDbContext : DbContext
     public DbSet<ProjectModule> ProjectModules => Set<ProjectModule>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<ProjectFavorite> ProjectFavorites => Set<ProjectFavorite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

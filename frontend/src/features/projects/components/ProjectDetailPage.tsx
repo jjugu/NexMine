@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -7,7 +7,7 @@ import {
   TableRow, Paper, Button, Alert, Grid,
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, Select, FormControl, InputLabel,
-  Autocomplete, CircularProgress,
+  Autocomplete, CircularProgress, IconButton, Tooltip,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LockIcon from '@mui/icons-material/Lock';
@@ -15,8 +15,14 @@ import PublicIcon from '@mui/icons-material/Public';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import NewReleasesIcon from '@mui/icons-material/NewReleases';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import {
+  LineChart, Line, AreaChart, Area, XAxis, YAxis,
+  CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
+} from 'recharts';
 import axiosInstance from '../../../api/axiosInstance';
-import type { ProjectDto, ProjectMemberDto, IssueDtoPagedResult, VersionDto } from '../../../api/generated/model';
+import type { ProjectDto, ProjectMemberDto, IssueDtoPagedResult, VersionDto, IssueTrendDto, BurndownDto } from '../../../api/generated/model';
 
 function fetchProject(identifier: string) {
   return axiosInstance.get<ProjectDto>(`/Projects/${identifier}`).then((res) => res.data);
@@ -32,6 +38,14 @@ function fetchIssueStats(identifier: string) {
 
 function fetchVersions(identifier: string) {
   return axiosInstance.get<VersionDto[]>(`/projects/${identifier}/versions`).then((res) => res.data);
+}
+
+function fetchIssueTrend(identifier: string) {
+  return axiosInstance.get<IssueTrendDto>(`/projects/${identifier}/charts/issue-trend`, { params: { days: 30 } }).then((res) => res.data);
+}
+
+function fetchBurndown(identifier: string, versionId: number) {
+  return axiosInstance.get<BurndownDto>(`/projects/${identifier}/charts/burndown`, { params: { versionId } }).then((res) => res.data);
 }
 
 export default function ProjectDetailPage() {
@@ -99,10 +113,64 @@ export default function ProjectDetailPage() {
     enabled: !!identifier,
   });
 
+  const issueTrendQuery = useQuery({
+    queryKey: ['issue-trend', identifier],
+    queryFn: () => fetchIssueTrend(identifier!),
+    enabled: !!identifier,
+  });
+
+  const [burndownVersionId, setBurndownVersionId] = useState<number | null>(null);
+
+  const burndownQuery = useQuery({
+    queryKey: ['burndown', identifier, burndownVersionId],
+    queryFn: () => fetchBurndown(identifier!, burndownVersionId!),
+    enabled: !!identifier && burndownVersionId !== null && burndownVersionId > 0,
+  });
+
+  // Set default burndown version when versions load
+  const versions = versionsQuery.data ?? [];
+  if (burndownVersionId === null && versions.length > 0) {
+    setBurndownVersionId(versions[0].id ?? null);
+  }
+
+  const favoriteMutation = useMutation({
+    mutationFn: (isFavorite: boolean) =>
+      isFavorite
+        ? axiosInstance.delete(`/projects/${identifier}/favorite`)
+        : axiosInstance.post(`/projects/${identifier}/favorite`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project', identifier] });
+      queryClient.invalidateQueries({ queryKey: ['my-favorites'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+
   const project = projectQuery.data;
   const members = membersQuery.data ?? [];
   const totalIssues = issueStatsQuery.data?.totalCount ?? 0;
   const totalVersions = versionsQuery.data?.length ?? 0;
+
+  // Transform issue trend data for recharts
+  const trendChartData = useMemo(() => {
+    const trend = issueTrendQuery.data;
+    if (!trend?.dates) return [];
+    return trend.dates.map((date, i) => ({
+      date: date.slice(5), // MM-DD format
+      created: trend.created?.[i] ?? 0,
+      closed: trend.closed?.[i] ?? 0,
+    }));
+  }, [issueTrendQuery.data]);
+
+  // Transform burndown data for recharts
+  const burndownChartData = useMemo(() => {
+    const bd = burndownQuery.data;
+    if (!bd?.dates) return [];
+    return bd.dates.map((date, i) => ({
+      date: date.slice(5),
+      remaining: bd.remaining?.[i] ?? 0,
+      ideal: bd.ideal?.[i] ?? 0,
+    }));
+  }, [burndownQuery.data]);
 
   function handleBack() {
     navigate('/projects');
@@ -157,6 +225,16 @@ export default function ProjectDetailPage() {
             <Grid size={{ xs: 12, md: 'auto' }} sx={{ flex: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <Typography variant="h5">{project.name}</Typography>
+                <Tooltip title={project.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}>
+                  <IconButton
+                    size="small"
+                    onClick={() => favoriteMutation.mutate(!!project.isFavorite)}
+                    disabled={favoriteMutation.isPending}
+                    sx={{ color: project.isFavorite ? 'warning.main' : 'action.disabled' }}
+                  >
+                    {project.isFavorite ? <StarIcon /> : <StarBorderIcon />}
+                  </IconButton>
+                </Tooltip>
                 {project.isPublic ? (
                   <Chip icon={<PublicIcon />} label="공개" size="small" color="success" variant="outlined" />
                 ) : (
@@ -265,6 +343,81 @@ export default function ProjectDetailPage() {
           </TableContainer>
         )}
       </Box>
+
+      {/* Charts Section */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        {/* Issue Trend Chart */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>이슈 추이 (최근 30일)</Typography>
+              {issueTrendQuery.isLoading ? (
+                <Skeleton variant="rectangular" height={250} sx={{ borderRadius: 1 }} />
+              ) : trendChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={trendChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" fontSize={12} />
+                    <YAxis allowDecimals={false} fontSize={12} />
+                    <RechartsTooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="created" name="생성" stroke="#1976d2" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="closed" name="완료" stroke="#2e7d32" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  데이터가 없습니다.
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Burndown Chart */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <Card variant="outlined">
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">번다운 차트</Typography>
+                {versions.length > 0 && (
+                  <FormControl size="small" sx={{ minWidth: 140 }}>
+                    <InputLabel>버전</InputLabel>
+                    <Select
+                      value={burndownVersionId ?? ''}
+                      label="버전"
+                      onChange={(e) => setBurndownVersionId(Number(e.target.value))}
+                    >
+                      {versions.map((v) => (
+                        <MenuItem key={v.id} value={v.id}>{v.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              </Box>
+              {burndownQuery.isLoading ? (
+                <Skeleton variant="rectangular" height={250} sx={{ borderRadius: 1 }} />
+              ) : burndownChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <AreaChart data={burndownChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" fontSize={12} />
+                    <YAxis allowDecimals={false} fontSize={12} />
+                    <RechartsTooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="remaining" name="남은 이슈" stroke="#1976d2" fill="#1976d240" strokeWidth={2} />
+                    <Area type="monotone" dataKey="ideal" name="이상선" stroke="#9e9e9e" fill="none" strokeWidth={2} strokeDasharray="5 5" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  {versions.length === 0 ? '버전이 없습니다.' : '데이터가 없습니다.'}
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Add Member Dialog */}
       <Dialog open={isAddMemberOpen} onClose={() => setIsAddMemberOpen(false)} maxWidth="xs" fullWidth>

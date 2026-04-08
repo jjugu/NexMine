@@ -25,7 +25,7 @@ public class ProjectService : IProjectService
         _mapper = mapper;
     }
 
-    public async Task<PagedResult<ProjectDto>> ListAsync(int page, int pageSize, string? search)
+    public async Task<PagedResult<ProjectDto>> ListAsync(int page, int pageSize, string? search, int? userId = null)
     {
         var query = _dbContext.Projects.AsQueryable();
 
@@ -46,10 +46,20 @@ public class ProjectService : IProjectService
             .Take(pageSize)
             .ToListAsync();
 
+        // Get favorite project IDs for the user
+        var favoriteProjectIds = userId.HasValue
+            ? (await _dbContext.ProjectFavorites
+                .Where(pf => pf.UserId == userId.Value)
+                .Select(pf => pf.ProjectId)
+                .ToListAsync())
+                .ToHashSet()
+            : new HashSet<int>();
+
         var dtos = items.Select(p =>
         {
             var dto = _mapper.Map<ProjectDto>(p);
             dto.EnabledModules = p.Modules.Where(m => m.ModuleName != "_configured").Select(m => m.ModuleName).ToList();
+            dto.IsFavorite = favoriteProjectIds.Contains(p.Id);
             return dto;
         }).ToList();
 
@@ -62,7 +72,7 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ProjectDto?> GetByIdentifierAsync(string identifier)
+    public async Task<ProjectDto?> GetByIdentifierAsync(string identifier, int? userId = null)
     {
         var project = await _dbContext.Projects
             .Include(p => p.Modules)
@@ -73,6 +83,13 @@ public class ProjectService : IProjectService
         var dto = _mapper.Map<ProjectDto>(project);
         var modules = project.Modules.Select(m => m.ModuleName).ToList();
         dto.EnabledModules = modules.Count > 0 ? modules : AllModules.ToList();
+
+        if (userId.HasValue)
+        {
+            dto.IsFavorite = await _dbContext.ProjectFavorites
+                .AnyAsync(pf => pf.UserId == userId.Value && pf.ProjectId == project.Id);
+        }
+
         return dto;
     }
 
@@ -242,6 +259,68 @@ public class ProjectService : IProjectService
 
         return await _dbContext.ProjectModules
             .AnyAsync(pm => pm.ProjectId == project.Id && pm.ModuleName == moduleName);
+    }
+
+    public async Task<bool> AddFavoriteAsync(string identifier, int userId)
+    {
+        var project = await _dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Identifier == identifier);
+
+        if (project is null) return false;
+
+        var exists = await _dbContext.ProjectFavorites
+            .AnyAsync(pf => pf.UserId == userId && pf.ProjectId == project.Id);
+
+        if (exists) return true; // Already a favorite, idempotent
+
+        _dbContext.ProjectFavorites.Add(new ProjectFavorite
+        {
+            UserId = userId,
+            ProjectId = project.Id
+        });
+
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> RemoveFavoriteAsync(string identifier, int userId)
+    {
+        var project = await _dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Identifier == identifier);
+
+        if (project is null) return false;
+
+        var favorite = await _dbContext.ProjectFavorites
+            .FirstOrDefaultAsync(pf => pf.UserId == userId && pf.ProjectId == project.Id);
+
+        if (favorite is null) return true; // Already not a favorite, idempotent
+
+        _dbContext.ProjectFavorites.Remove(favorite);
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<List<ProjectDto>> GetFavoritesAsync(int userId)
+    {
+        var favorites = await _dbContext.ProjectFavorites
+            .Where(pf => pf.UserId == userId)
+            .Include(pf => pf.Project)
+                .ThenInclude(p => p.Modules)
+            .Select(pf => pf.Project)
+            .Where(p => !p.IsArchived)
+            .OrderBy(p => p.Name)
+            .ToListAsync();
+
+        return favorites.Select(p =>
+        {
+            var dto = _mapper.Map<ProjectDto>(p);
+            dto.EnabledModules = p.Modules
+                .Where(m => m.ModuleName != "_configured")
+                .Select(m => m.ModuleName)
+                .ToList();
+            dto.IsFavorite = true;
+            return dto;
+        }).ToList();
     }
 
     public async Task<ProjectDto> CopyProjectAsync(string sourceIdentifier, CopyProjectRequest request, int userId)

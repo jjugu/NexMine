@@ -32,7 +32,8 @@
     "roadmap": "Roadmap",
     "versions": "Versions",
     "settings": "Settings",
-    "preferences": "Preferences"
+    "preferences": "Preferences",
+    "favorites": "Favorites"
   },
   "admin": {
     "title": "Admin",

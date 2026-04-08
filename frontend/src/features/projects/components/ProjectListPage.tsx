@@ -1,20 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Button, TextField, InputAdornment,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Chip, TablePagination, Card, CardContent,
-  CardActionArea, useMediaQuery, useTheme, Grid,
+  CardActionArea, useMediaQuery, useTheme, Grid, IconButton, Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import LockIcon from '@mui/icons-material/Lock';
 import PublicIcon from '@mui/icons-material/Public';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { QueryState, TableSkeleton, CardSkeleton } from '../../../components/common/QueryState';
 import axiosInstance from '../../../api/axiosInstance';
-import type { ProjectDtoPagedResult } from '../../../api/generated/model';
+import type { ProjectDtoPagedResult, ProjectDto } from '../../../api/generated/model';
 import ProjectCreateDialog from './ProjectCreateDialog';
 
 function fetchProjects(page: number, pageSize: number, search: string) {
@@ -36,6 +38,7 @@ function formatDate(dateStr?: string) {
 
 export default function ProjectListPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [searchParams, setSearchParams] = useSearchParams();
@@ -67,7 +70,33 @@ export default function ProjectListPage() {
     queryFn: () => fetchProjects(page, pageSize, searchFromUrl),
   });
 
-  const items = data?.items ?? [];
+  const favoriteMutation = useMutation({
+    mutationFn: ({ identifier, isFavorite }: { identifier: string; isFavorite: boolean }) =>
+      isFavorite
+        ? axiosInstance.delete(`/projects/${identifier}/favorite`)
+        : axiosInstance.post(`/projects/${identifier}/favorite`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['my-favorites'] });
+    },
+  });
+
+  function handleToggleFavorite(e: React.MouseEvent, project: ProjectDto) {
+    e.stopPropagation();
+    if (project.identifier) {
+      favoriteMutation.mutate({ identifier: project.identifier, isFavorite: !!project.isFavorite });
+    }
+  }
+
+  const rawItems = data?.items ?? [];
+  // Sort: favorites first, then by original order
+  const items = useMemo(() => {
+    return [...rawItems].sort((a, b) => {
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      return 0;
+    });
+  }, [rawItems]);
   const totalCount = data?.totalCount ?? 0;
 
   const handleChangePage = useCallback(
@@ -168,6 +197,7 @@ export default function ProjectListPage() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell sx={{ width: 40, px: 0.5 }}></TableCell>
                 <TableCell>이름</TableCell>
                 <TableCell>식별자</TableCell>
                 <TableCell>공개여부</TableCell>
@@ -182,6 +212,17 @@ export default function ProjectListPage() {
                   sx={{ cursor: 'pointer' }}
                   onClick={() => handleRowClick(project.identifier)}
                 >
+                  <TableCell sx={{ px: 0.5 }}>
+                    <Tooltip title={project.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => handleToggleFavorite(e, project)}
+                        sx={{ color: project.isFavorite ? 'warning.main' : 'action.disabled' }}
+                      >
+                        {project.isFavorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {project.name}
@@ -228,9 +269,18 @@ export default function ProjectListPage() {
                   <CardActionArea onClick={() => handleRowClick(project.identifier)}>
                     <CardContent sx={{ py: 1.5, px: 2 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {project.name}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleToggleFavorite(e, project)}
+                            sx={{ color: project.isFavorite ? 'warning.main' : 'action.disabled', p: 0.25 }}
+                          >
+                            {project.isFavorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
+                          </IconButton>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            {project.name}
+                          </Typography>
+                        </Box>
                         {project.isPublic ? (
                           <Chip icon={<PublicIcon />} label="공개" size="small" color="success" variant="outlined" />
                         ) : (

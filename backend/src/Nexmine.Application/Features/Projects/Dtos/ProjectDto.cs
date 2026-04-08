@@ -10,4 +10,5 @@ public class ProjectDto
     public bool IsArchived { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<string>? EnabledModules { get; set; }
+    public bool IsFavorite { get; set; }
 }

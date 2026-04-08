@@ -46,11 +46,13 @@ import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import GroupIcon from '@mui/icons-material/Group';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import TranslateIcon from '@mui/icons-material/Translate';
+import StarIcon from '@mui/icons-material/Star';
 import { useIsFetching, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import axiosInstance from '../../api/axiosInstance';
 import type { SavedQueryDto, ProjectDto, AppSettingsResponse } from '../../api/generated/model';
+import NotificationBell from '../common/NotificationBell';
 import RealtimeNotifications from '../common/RealtimeNotifications';
 
 const DRAWER_WIDTH = 240;
@@ -146,6 +148,18 @@ export default function AppLayout() {
 
   const appDisplayName = appSettings?.appName || 'Nexmine';
   const appLogoUrl = appSettings?.logoUrl ? '/api/settings/logo' : null;
+
+  // Favorite projects
+  const favoritesQuery = useQuery({
+    queryKey: ['my-favorites'],
+    queryFn: () =>
+      axiosInstance
+        .get<ProjectDto[]>('/my/favorites')
+        .then((res) => res.data),
+    staleTime: 60 * 1000,
+  });
+
+  const favoriteProjects = favoritesQuery.data ?? [];
 
   // Detect if we are inside a project context (/projects/{identifier} and deeper)
   const projectMatch = location.pathname.match(/^\/projects\/([^/]+)/);
@@ -308,6 +322,52 @@ export default function AppLayout() {
             </ListItemButton>
           </Tooltip>
         ))}
+
+        {/* Favorite projects */}
+        {favoriteProjects.length > 0 && !isProjectContext && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            {sidebarOpen ? (
+              <ListItemButton disabled sx={{ borderRadius: 1, mb: 0.5, py: 0.5 }}>
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <StarIcon fontSize="small" sx={{ color: 'warning.main' }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary={t('nav.favorites')}
+                  primaryTypographyProps={{ variant: 'caption', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}
+                />
+              </ListItemButton>
+            ) : (
+              <Tooltip title={t('nav.favorites')} placement="right">
+                <ListItemButton disabled sx={{ borderRadius: 1, mb: 0.5, justifyContent: 'center', px: 1 }}>
+                  <StarIcon fontSize="small" sx={{ color: 'warning.main' }} />
+                </ListItemButton>
+              </Tooltip>
+            )}
+            {favoriteProjects.map((fp) => (
+              <Tooltip title={!sidebarOpen ? (fp.name ?? '') : ''} placement="right" key={fp.identifier}>
+                <ListItemButton
+                  selected={location.pathname.startsWith(`/projects/${fp.identifier}`)}
+                  onClick={() => {
+                    navigate(`/projects/${fp.identifier}`);
+                    if (isMobile) setMobileOpen(false);
+                  }}
+                  sx={{ borderRadius: 1, mb: 0.5, pl: sidebarOpen ? 3 : 1, justifyContent: sidebarOpen ? 'initial' : 'center', px: sidebarOpen ? 2 : 1 }}
+                >
+                  <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>
+                    <FolderIcon fontSize="small" />
+                  </ListItemIcon>
+                  {sidebarOpen && (
+                    <ListItemText
+                      primary={fp.name}
+                      primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                    />
+                  )}
+                </ListItemButton>
+              </Tooltip>
+            ))}
+          </>
+        )}
 
         {/* Project sub-navigation */}
         {projectIdentifier && projectSubNav.length > 0 && (
@@ -557,6 +617,8 @@ export default function AppLayout() {
                 </IconButton>
               </Tooltip>
             )}
+
+            {!searchExpanded && <NotificationBell />}
 
             {!searchExpanded && (
               <Typography variant="body2" sx={{ mr: 1, color: 'text.secondary', display: { xs: 'none', sm: 'block' } }}>

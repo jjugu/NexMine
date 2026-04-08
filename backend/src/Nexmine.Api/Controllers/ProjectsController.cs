@@ -30,7 +30,8 @@ public class ProjectsController : ControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null)
     {
-        var result = await _projectService.ListAsync(page, pageSize, search);
+        var userId = User.GetUserId();
+        var result = await _projectService.ListAsync(page, pageSize, search, userId);
         return Ok(result);
     }
 
@@ -49,7 +50,8 @@ public class ProjectsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdentifierAsync(string identifier)
     {
-        var project = await _projectService.GetByIdentifierAsync(identifier);
+        var userId = User.GetUserId();
+        var project = await _projectService.GetByIdentifierAsync(identifier, userId);
 
         if (project is null)
         {
@@ -218,5 +220,56 @@ public class ProjectsController : ControllerBase
         await _googleChatService.SendMessageAsync(project.Id,
             $"Nexmine 연동 테스트 메시지입니다.\n프로젝트: {project.Name}");
         return Ok(new { message = "테스트 메시지를 전송했습니다." });
+    }
+
+    [HttpPost("{identifier}/favorite")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddFavoriteAsync(string identifier)
+    {
+        var userId = User.GetUserId();
+        var success = await _projectService.AddFavoriteAsync(identifier, userId);
+
+        if (!success)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "찾을 수 없음",
+                Detail = $"프로젝트 '{identifier}'를 찾을 수 없습니다."
+            });
+        }
+
+        return Ok(new { message = "즐겨찾기에 추가되었습니다." });
+    }
+
+    [HttpDelete("{identifier}/favorite")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveFavoriteAsync(string identifier)
+    {
+        var userId = User.GetUserId();
+        var success = await _projectService.RemoveFavoriteAsync(identifier, userId);
+
+        if (!success)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "찾을 수 없음",
+                Detail = $"프로젝트 '{identifier}'를 찾을 수 없습니다."
+            });
+        }
+
+        return NoContent();
+    }
+
+    [HttpGet("/api/my/favorites")]
+    [ProducesResponseType(typeof(List<ProjectDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFavoritesAsync()
+    {
+        var userId = User.GetUserId();
+        var favorites = await _projectService.GetFavoritesAsync(userId);
+        return Ok(favorites);
     }
 }

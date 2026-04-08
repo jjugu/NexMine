@@ -8,6 +8,7 @@ using Nexmine.Application.Features.CustomFields.Interfaces;
 using Nexmine.Application.Features.Integrations.Interfaces;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
+using Nexmine.Application.Features.Notifications.Interfaces;
 using Nexmine.Application.Features.Realtime.Interfaces;
 using Nexmine.Application.Features.Watchers.Interfaces;
 using Nexmine.Application.Features.Workflows.Interfaces;
@@ -25,6 +26,7 @@ public class IssueService : IIssueService
     private readonly IWatcherService _watcherService;
     private readonly IRealtimeNotificationService _realtimeNotificationService;
     private readonly IGoogleChatService _googleChatService;
+    private readonly INotificationService _notificationService;
 
     private static readonly string[] TrackedFields =
     [
@@ -50,7 +52,8 @@ public class IssueService : IIssueService
         IWorkflowService workflowService,
         IWatcherService watcherService,
         IRealtimeNotificationService realtimeNotificationService,
-        IGoogleChatService googleChatService)
+        IGoogleChatService googleChatService,
+        INotificationService notificationService)
     {
         _dbContext = dbContext;
         _mapper = mapper;
@@ -59,6 +62,7 @@ public class IssueService : IIssueService
         _watcherService = watcherService;
         _realtimeNotificationService = realtimeNotificationService;
         _googleChatService = googleChatService;
+        _notificationService = notificationService;
     }
 
     public async Task<PagedResult<IssueDto>> ListAsync(string projectIdentifier, IssueFilterParams filterParams)
@@ -284,6 +288,15 @@ public class IssueService : IIssueService
                 $"{authorName}님이 이슈 '#{created.Id} {created.Subject}'을 할당했습니다",
                 projectIdentifier,
                 created.Id);
+
+            // DB notification for assignee
+            await _notificationService.CreateNotificationAsync(
+                created.AssignedToId.Value,
+                "issue_assigned",
+                $"새 이슈가 할당되었습니다: #{created.Id} {created.Subject}",
+                $"{authorName}님이 이슈를 할당했습니다",
+                $"/projects/{projectIdentifier}/issues/{created.Id}",
+                userId);
         }
 
         // Google Chat webhook notification (fire-and-forget)
@@ -510,6 +523,15 @@ public class IssueService : IIssueService
                     $"{userName}님이 이슈 '#{updated.Id} {updated.Subject}'을 수정했습니다",
                     project.Identifier,
                     updated.Id);
+
+                // DB notification for assignee
+                await _notificationService.CreateNotificationAsync(
+                    updated.AssignedToId.Value,
+                    "issue_updated",
+                    $"이슈가 수정되었습니다: #{updated.Id} {updated.Subject}",
+                    $"{userName}님이 이슈를 수정했습니다",
+                    $"/projects/{project.Identifier}/issues/{updated.Id}",
+                    userId);
             }
 
             // Google Chat webhook notification (fire-and-forget)

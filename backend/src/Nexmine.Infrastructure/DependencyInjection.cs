@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Nexmine.Application.Features.Activities.Interfaces;
+using Nexmine.Application.Features.Charts.Interfaces;
 using Nexmine.Application.Features.Admin.Interfaces;
 using Nexmine.Application.Features.Auth.Interfaces;
 using Nexmine.Application.Features.CustomFields.Interfaces;
@@ -19,6 +20,7 @@ using Nexmine.Application.Features.Integrations.Interfaces;
 using Nexmine.Application.Features.SavedQueries.Interfaces;
 using Nexmine.Application.Features.Search.Interfaces;
 using Nexmine.Application.Features.Settings.Interfaces;
+using Nexmine.Application.Features.Notifications.Interfaces;
 using Nexmine.Application.Features.UserPreferences.Interfaces;
 using Nexmine.Application.Features.Watchers.Interfaces;
 using Nexmine.Application.Features.Wiki.Interfaces;
@@ -104,6 +106,12 @@ public static class DependencyInjection
 
         // User Preferences
         services.AddScoped<IUserPreferenceService, UserPreferenceService>();
+
+        // Notifications
+        services.AddScoped<INotificationService, NotificationService>();
+
+        // Charts
+        services.AddScoped<IChartService, ChartService>();
 
         return services;
     }
