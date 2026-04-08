@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IProjectMemberService, ProjectMemberService>();
+        services.AddScoped<IProjectModuleChecker, ProjectModuleChecker>();
         services.AddScoped<IIssueService, IssueService>();
         services.AddScoped<IJournalService, JournalService>();
         services.AddScoped<ITimeEntryService, TimeEntryService>();

@@ -43,6 +43,7 @@ public class NexmineDbContext : DbContext
     public DbSet<Forum> Forums => Set<Forum>();
     public DbSet<ForumTopic> ForumTopics => Set<ForumTopic>();
     public DbSet<ForumReply> ForumReplies => Set<ForumReply>();
+    public DbSet<ProjectModule> ProjectModules => Set<ProjectModule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

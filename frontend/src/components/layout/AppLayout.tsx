@@ -77,23 +77,37 @@ interface ProjectSubNavItem {
   icon: React.ReactNode;
   path: string;
   isDisabled?: boolean;
+  moduleKey?: string; // maps to enabledModules key; undefined means always visible
 }
 
 function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
   return [
-    { label: '이슈', icon: <BugReportIcon />, path: `/projects/${identifier}/issues` },
-    { label: '칸반', icon: <ViewKanbanIcon />, path: `/projects/${identifier}/kanban` },
-    { label: '간트', icon: <BarChartIcon />, path: `/projects/${identifier}/gantt` },
-    { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar` },
-    { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki` },
-    { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents` },
-    { label: '게시판', icon: <ForumIcon />, path: `/projects/${identifier}/forums` },
-    { label: '뉴스', icon: <NewspaperIcon />, path: `/projects/${identifier}/news` },
-    { label: '로드맵', icon: <FlagIcon />, path: `/projects/${identifier}/roadmap` },
-    { label: '활동', icon: <HistoryIcon />, path: `/projects/${identifier}/activity` },
-    { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions` },
+    { label: '이슈', icon: <BugReportIcon />, path: `/projects/${identifier}/issues`, moduleKey: 'issues' },
+    { label: '칸반', icon: <ViewKanbanIcon />, path: `/projects/${identifier}/kanban`, moduleKey: 'boards' },
+    { label: '간트', icon: <BarChartIcon />, path: `/projects/${identifier}/gantt`, moduleKey: 'gantt' },
+    { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar`, moduleKey: 'calendar' },
+    { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki`, moduleKey: 'wiki' },
+    { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents`, moduleKey: 'documents' },
+    { label: '게시판', icon: <ForumIcon />, path: `/projects/${identifier}/forums`, moduleKey: 'forums' },
+    { label: '뉴스', icon: <NewspaperIcon />, path: `/projects/${identifier}/news`, moduleKey: 'news' },
+    { label: '로드맵', icon: <FlagIcon />, path: `/projects/${identifier}/roadmap`, moduleKey: 'roadmap' },
+    { label: '활동', icon: <HistoryIcon />, path: `/projects/${identifier}/activity`, moduleKey: 'activity' },
+    { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions`, moduleKey: 'time_tracking' },
     { label: '설정', icon: <SettingsIcon />, path: `/projects/${identifier}/settings` },
   ];
+}
+
+/** Filter sub-nav items based on project's enabled modules.
+ *  If enabledModules is null/undefined (legacy projects), show all items.
+ */
+function filterSubNavByModules(
+  items: ProjectSubNavItem[],
+  enabledModules: string[] | null | undefined,
+): ProjectSubNavItem[] {
+  if (!enabledModules) return items; // backward compatibility: show all
+  return items.filter(
+    (item) => !item.moduleKey || enabledModules.includes(item.moduleKey),
+  );
 }
 
 export default function AppLayout() {
@@ -117,7 +131,7 @@ export default function AppLayout() {
   const projectMatch = location.pathname.match(/^\/projects\/([^/]+)/);
   const isProjectContext = projectMatch && projectMatch[1] !== 'undefined';
   const projectIdentifier = isProjectContext ? params.identifier ?? projectMatch[1] : null;
-  const projectSubNav = projectIdentifier ? getProjectSubNav(projectIdentifier) : [];
+  const projectSubNavAll = projectIdentifier ? getProjectSubNav(projectIdentifier) : [];
 
   // Fetch project info to get projectId for saved queries
   const projectInfoQuery = useQuery({
@@ -131,6 +145,7 @@ export default function AppLayout() {
   });
 
   const projectId = projectInfoQuery.data?.id;
+  const projectSubNav = filterSubNavByModules(projectSubNavAll, projectInfoQuery.data?.enabledModules);
 
   // Fetch saved queries for the current project
   const savedQueriesQuery = useQuery({

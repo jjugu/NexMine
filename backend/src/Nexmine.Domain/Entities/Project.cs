@@ -18,4 +18,5 @@ public class Project : BaseEntity
     public List<News> News { get; set; } = [];
     public List<IssueTemplate> IssueTemplates { get; set; } = [];
     public List<Forum> Forums { get; set; } = [];
+    public List<ProjectModule> Modules { get; set; } = [];
 }

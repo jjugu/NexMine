@@ -11,6 +11,7 @@ import {
   FormControl, InputLabel, Select, MenuItem, Switch,
   FormControlLabel, Skeleton, Breadcrumbs, Link, Chip, CircularProgress,
   List, ListItem, ListItemText, ListItemSecondaryAction, Divider,
+  Snackbar,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -26,6 +27,7 @@ import type {
   ProjectMemberDto,
   IssueCategoryDto,
   UpdateProjectRequest,
+  ProjectModulesDto,
 } from '../../../api/generated/model';
 
 // --- API functions ---
@@ -648,6 +650,148 @@ function CategoriesSection({ identifier }: { identifier: string }) {
   );
 }
 
+// --- Module labels (Korean) ---
+const MODULE_LABELS: Record<string, string> = {
+  issues: '이슈 트래킹',
+  boards: '칸반 보드',
+  gantt: '간트차트',
+  calendar: '캘린더',
+  wiki: '위키',
+  documents: '문서',
+  news: '뉴스',
+  forums: '게시판',
+  time_tracking: '시간 기록',
+  roadmap: '로드맵',
+  activity: '활동',
+};
+
+function ModulesSection({ identifier }: { identifier: string }) {
+  const queryClient = useQueryClient();
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false, message: '', severity: 'success',
+  });
+
+  const modulesQuery = useQuery({
+    queryKey: ['project-modules', identifier],
+    queryFn: () =>
+      axiosInstance
+        .get<ProjectModulesDto>(`/Projects/${identifier}/modules`)
+        .then((r) => r.data),
+    enabled: !!identifier,
+  });
+
+  const allModules = modulesQuery.data?.allModules ?? [];
+  const enabledModules = modulesQuery.data?.enabledModules ?? [];
+
+  const [localEnabled, setLocalEnabled] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
+
+  // Sync local state when data loads
+  if (modulesQuery.data && !initialized) {
+    setLocalEnabled(enabledModules);
+    setInitialized(true);
+  }
+
+  // Reset initialized flag when identifier changes
+  const [prevIdentifier, setPrevIdentifier] = useState(identifier);
+  if (prevIdentifier !== identifier) {
+    setPrevIdentifier(identifier);
+    setInitialized(false);
+  }
+
+  function handleToggle(moduleKey: string) {
+    setLocalEnabled((prev) =>
+      prev.includes(moduleKey)
+        ? prev.filter((m) => m !== moduleKey)
+        : [...prev, moduleKey]
+    );
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      axiosInstance.put(`/Projects/${identifier}/modules`, {
+        enabledModules: localEnabled,
+      }),
+    onSuccess: () => {
+      setSnackbar({ open: true, message: '모듈 설정이 저장되었습니다.', severity: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['project-modules', identifier] });
+      queryClient.invalidateQueries({ queryKey: ['project', identifier] });
+      queryClient.invalidateQueries({ queryKey: ['project-settings', identifier] });
+    },
+    onError: (err: unknown) => {
+      const axiosError = err as { response?: { status?: number; data?: { detail?: string; title?: string } } };
+      if (axiosError.response?.status === 403) {
+        setSnackbar({ open: true, message: '권한이 없습니다.', severity: 'error' });
+      } else {
+        setSnackbar({
+          open: true,
+          message: axiosError.response?.data?.detail || axiosError.response?.data?.title || '모듈 설정 저장에 실패했습니다.',
+          severity: 'error',
+        });
+      }
+    },
+  });
+
+  const isDirty = initialized && (
+    localEnabled.length !== enabledModules.length ||
+    localEnabled.some((m) => !enabledModules.includes(m))
+  );
+
+  if (modulesQuery.isLoading) {
+    return <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 1, mb: 3 }} />;
+  }
+
+  return (
+    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+      <Typography variant="h6" sx={{ mb: 2 }}>모듈</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        프로젝트에서 사용할 모듈을 선택합니다. 비활성화된 모듈은 사이드바와 프로젝트 메뉴에서 숨겨집니다.
+      </Typography>
+
+      <Grid container spacing={1}>
+        {allModules.map((moduleKey) => (
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={moduleKey}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={localEnabled.includes(moduleKey)}
+                  onChange={() => handleToggle(moduleKey)}
+                />
+              }
+              label={MODULE_LABELS[moduleKey] ?? moduleKey}
+            />
+          </Grid>
+        ))}
+      </Grid>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+        <Button
+          variant="contained"
+          disabled={saveMutation.isPending || !isDirty}
+          startIcon={saveMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+          onClick={() => saveMutation.mutate()}
+        >
+          {saveMutation.isPending ? '저장 중...' : '저장'}
+        </Button>
+      </Box>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Paper>
+  );
+}
+
 function ArchiveSection({ identifier }: { identifier: string }) {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -766,6 +910,7 @@ export default function ProjectSettingsPage() {
       <ProjectInfoSection identifier={identifier} />
       <MembersSection identifier={identifier} />
       <CategoriesSection identifier={identifier} />
+      <ModulesSection identifier={identifier} />
       <ArchiveSection identifier={identifier} />
     </Box>
   );

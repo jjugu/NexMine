@@ -10,4 +10,7 @@ public interface IProjectService
     Task<ProjectDto> CreateAsync(CreateProjectRequest request, int userId);
     Task<ProjectDto?> UpdateAsync(string identifier, UpdateProjectRequest request);
     Task<bool> ArchiveAsync(string identifier);
+    Task<ProjectModulesDto> GetModulesAsync(string projectIdentifier);
+    Task UpdateModulesAsync(string projectIdentifier, UpdateProjectModulesRequest request);
+    Task<bool> IsModuleEnabledAsync(string projectIdentifier, string moduleName);
 }

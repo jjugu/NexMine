@@ -103,4 +103,26 @@ public class ProjectsController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpGet("{identifier}/modules")]
+    [ProducesResponseType(typeof(ProjectModulesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetModulesAsync(string identifier)
+    {
+        var modules = await _projectService.GetModulesAsync(identifier);
+        return Ok(modules);
+    }
+
+    [HttpPut("{identifier}/modules")]
+    [ProjectManager]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UpdateModulesAsync(string identifier, [FromBody] UpdateProjectModulesRequest request)
+    {
+        await _projectService.UpdateModulesAsync(identifier, request);
+        var modules = await _projectService.GetModulesAsync(identifier);
+        return Ok(modules);
+    }
 }

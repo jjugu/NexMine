@@ -13,6 +13,12 @@ public class ProjectService : IProjectService
     private readonly NexmineDbContext _dbContext;
     private readonly IMapper _mapper;
 
+    private static readonly string[] AllModules =
+    [
+        "issues", "boards", "gantt", "calendar", "wiki",
+        "documents", "news", "forums", "time_tracking", "roadmap", "activity"
+    ];
+
     public ProjectService(NexmineDbContext dbContext, IMapper mapper)
     {
         _dbContext = dbContext;
@@ -34,14 +40,22 @@ public class ProjectService : IProjectService
         var totalCount = await query.CountAsync();
 
         var items = await query
+            .Include(p => p.Modules)
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
+        var dtos = items.Select(p =>
+        {
+            var dto = _mapper.Map<ProjectDto>(p);
+            dto.EnabledModules = p.Modules.Select(m => m.ModuleName).ToList();
+            return dto;
+        }).ToList();
+
         return new PagedResult<ProjectDto>
         {
-            Items = _mapper.Map<List<ProjectDto>>(items),
+            Items = dtos,
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize
@@ -51,9 +65,14 @@ public class ProjectService : IProjectService
     public async Task<ProjectDto?> GetByIdentifierAsync(string identifier)
     {
         var project = await _dbContext.Projects
+            .Include(p => p.Modules)
             .FirstOrDefaultAsync(p => p.Identifier == identifier);
 
-        return project is null ? null : _mapper.Map<ProjectDto>(project);
+        if (project is null) return null;
+
+        var dto = _mapper.Map<ProjectDto>(project);
+        dto.EnabledModules = project.Modules.Select(m => m.ModuleName).ToList();
+        return dto;
     }
 
     public async Task<ProjectDto> CreateAsync(CreateProjectRequest request, int userId)
@@ -86,9 +105,18 @@ public class ProjectService : IProjectService
         };
 
         _dbContext.ProjectMemberships.Add(membership);
+
+        // Enable all modules by default
+        foreach (var mod in AllModules)
+        {
+            _dbContext.ProjectModules.Add(new ProjectModule { ProjectId = project.Id, ModuleName = mod });
+        }
+
         await _dbContext.SaveChangesAsync();
 
-        return _mapper.Map<ProjectDto>(project);
+        var dto = _mapper.Map<ProjectDto>(project);
+        dto.EnabledModules = AllModules.ToList();
+        return dto;
     }
 
     public async Task<ProjectDto?> UpdateAsync(string identifier, UpdateProjectRequest request)
@@ -132,5 +160,74 @@ public class ProjectService : IProjectService
         await _dbContext.SaveChangesAsync();
 
         return true;
+    }
+
+    public async Task<ProjectModulesDto> GetModulesAsync(string projectIdentifier)
+    {
+        var project = await _dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Identifier == projectIdentifier);
+
+        if (project is null)
+        {
+            throw new KeyNotFoundException($"프로젝트 '{projectIdentifier}'를 찾을 수 없습니다.");
+        }
+
+        var enabledModules = await _dbContext.ProjectModules
+            .Where(pm => pm.ProjectId == project.Id)
+            .Select(pm => pm.ModuleName)
+            .ToListAsync();
+
+        return new ProjectModulesDto
+        {
+            EnabledModules = enabledModules,
+            AllModules = AllModules.ToList()
+        };
+    }
+
+    public async Task UpdateModulesAsync(string projectIdentifier, UpdateProjectModulesRequest request)
+    {
+        var project = await _dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Identifier == projectIdentifier);
+
+        if (project is null)
+        {
+            throw new KeyNotFoundException($"프로젝트 '{projectIdentifier}'를 찾을 수 없습니다.");
+        }
+
+        // Validate module names
+        var invalidModules = request.EnabledModules.Except(AllModules).ToList();
+        if (invalidModules.Count > 0)
+        {
+            throw new ArgumentException($"유효하지 않은 모듈: {string.Join(", ", invalidModules)}");
+        }
+
+        // Remove all existing modules
+        var existing = await _dbContext.ProjectModules
+            .Where(pm => pm.ProjectId == project.Id)
+            .ToListAsync();
+
+        _dbContext.ProjectModules.RemoveRange(existing);
+
+        // Add new modules
+        foreach (var mod in request.EnabledModules)
+        {
+            _dbContext.ProjectModules.Add(new ProjectModule { ProjectId = project.Id, ModuleName = mod });
+        }
+
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<bool> IsModuleEnabledAsync(string projectIdentifier, string moduleName)
+    {
+        var project = await _dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Identifier == projectIdentifier);
+
+        if (project is null)
+        {
+            return false;
+        }
+
+        return await _dbContext.ProjectModules
+            .AnyAsync(pm => pm.ProjectId == project.Id && pm.ModuleName == moduleName);
     }
 }

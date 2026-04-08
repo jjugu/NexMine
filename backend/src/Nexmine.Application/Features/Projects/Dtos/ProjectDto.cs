@@ -9,4 +9,5 @@ public class ProjectDto
     public bool IsPublic { get; set; }
     public bool IsArchived { get; set; }
     public DateTime CreatedAt { get; set; }
+    public List<string>? EnabledModules { get; set; }
 }
