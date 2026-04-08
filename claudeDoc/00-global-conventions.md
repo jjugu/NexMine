@@ -95,3 +95,4 @@ scope: auth, project, issue, kanban, gantt, calendar, wiki, docs, api, ui
 | 2026-04-08 | 시스템 설정 저장 시 빈 값(logo_url 등) 400 에러 | AdminSettingsController에서 Value를 IsNullOrWhiteSpace로 검증하여 빈 문자열 거부 | Value 필수 검증 제거, null일 때만 빈 문자열로 대체 | 시스템 설정 Value는 빈 문자열을 허용해야 함 (로고 URL 미설정 등) |
 | 2026-04-08 | 여러 설정 동시 저장 시 성공→실패 Snackbar 교차 표시 | saveMutation.mutate를 forEach로 병렬 호출하면 onSuccess/onError가 각각 독립 트리거 | async/await로 순차 실행, 전체 성공/실패 후 1번만 Snackbar 표시 | 다수 API를 일괄 호출할 때 useMutation.mutate 반복 금지 → async/await 순차 호출 |
 | 2026-04-08 | 로고 이미지 img 태그에서 로드 실패 | 첨부파일 다운로드 API가 [Authorize] → img 태그는 인증 헤더 미전송 | 공개 엔드포인트 GET /api/settings/logo 추가 (AllowAnonymous) | 인증 필요 파일을 img/favicon으로 표시할 때는 공개 다운로드 엔드포인트 필요 |
+| 2026-04-08 | 백엔드 DTO 필드 추가 후 프론트 TS2339 에러 (Property does not exist) | AppSettingsResponse에 faviconUrl 추가했으나 orval 재생성 안 함 → 생성 타입에 필드 미존재 | 백엔드 DTO 변경 시 반드시 orval 재생성 후 프론트 빌드 | 백엔드 DTO 필드 변경/추가 시 dotnet run → npx orval → npm run build 순서 필수 |
