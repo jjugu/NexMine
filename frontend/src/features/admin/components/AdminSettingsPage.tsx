@@ -39,6 +39,7 @@ export default function AdminSettingsPage() {
   const [primaryColor, setPrimaryColor] = useState('#1976d2');
   const [customColor, setCustomColor] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [faviconUrl, setFaviconUrl] = useState('');
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -60,6 +61,7 @@ export default function AdminSettingsPage() {
       setSessionTimeout(settings.session_timeout_minutes ?? '');
       setPrimaryColor(settings.primary_color || '#1976d2');
       setLogoUrl(settings.logo_url ?? '');
+      setFaviconUrl(settings.favicon_url ?? '');
     }
   }, [settings]);
 
@@ -361,6 +363,55 @@ export default function AdminSettingsPage() {
             </Box>
           )}
 
+          {/* Favicon Upload */}
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>파비콘 (브라우저 탭 아이콘)</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+            <Button variant="outlined" component="label" size="small">
+              파일 업로드
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  formData.append('attachableType', 'system');
+                  formData.append('attachableId', '0');
+                  try {
+                    const res = await axiosInstance.post('/attachments', formData);
+                    const uploaded = res.data;
+                    const downloadUrl = `/api/attachments/${uploaded.id}/download`;
+                    setFaviconUrl(downloadUrl);
+                    setSnackbar({ open: true, message: '파비콘이 업로드되었습니다.', severity: 'success' });
+                  } catch {
+                    setSnackbar({ open: true, message: '파비콘 업로드에 실패했습니다.', severity: 'error' });
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </Button>
+            <TextField
+              label="또는 URL 직접 입력"
+              value={faviconUrl}
+              onChange={(e) => setFaviconUrl(e.target.value)}
+              placeholder="https://example.com/favicon.ico"
+              size="small"
+              sx={{ flex: 1 }}
+            />
+            {faviconUrl && (
+              <Button size="small" color="error" onClick={() => setFaviconUrl('')}>제거</Button>
+            )}
+          </Box>
+          {faviconUrl && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>미리보기</Typography>
+              <Box component="img" src={faviconUrl} alt="파비콘 미리보기" sx={{ height: 32, width: 32, objectFit: 'contain' }}
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }} />
+            </Box>
+          )}
+
           <Box sx={{ mt: 2 }}>
             <Button
               variant="contained"
@@ -369,6 +420,7 @@ export default function AdminSettingsPage() {
                 try {
                   await axiosInstance.put('/admin/settings', { key: 'primary_color', value: primaryColor });
                   await axiosInstance.put('/admin/settings', { key: 'logo_url', value: logoUrl });
+                  await axiosInstance.put('/admin/settings', { key: 'favicon_url', value: faviconUrl });
                   queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
                   queryClient.invalidateQueries({ queryKey: ['app-settings'] });
                   setSnackbar({ open: true, message: '테마가 저장되었습니다.', severity: 'success' });

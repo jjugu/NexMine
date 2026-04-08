@@ -6,5 +6,6 @@ public class AppSettingsResponse
     public string? AppDescription { get; set; }
     public string PrimaryColor { get; set; } = "#1976d2";
     public string? LogoUrl { get; set; }
+    public string? FaviconUrl { get; set; }
     public string DefaultLanguage { get; set; } = "ko";
 }

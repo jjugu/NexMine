@@ -41,6 +41,7 @@ public class SettingsController : ControllerBase
             AppDescription = await _systemSettingService.GetAsync("app_description"),
             PrimaryColor = await _systemSettingService.GetAsync("primary_color") ?? "#1976d2",
             LogoUrl = await _systemSettingService.GetAsync("logo_url"),
+            FaviconUrl = await _systemSettingService.GetAsync("favicon_url"),
             DefaultLanguage = await _systemSettingService.GetAsync("default_language") ?? "ko"
         };
 
@@ -70,5 +71,28 @@ public class SettingsController : ControllerBase
 
         // If it's an external URL, redirect
         return Redirect(logoUrl);
+    }
+
+    [HttpGet("favicon")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetFaviconAsync()
+    {
+        var faviconUrl = await _systemSettingService.GetAsync("favicon_url");
+        if (string.IsNullOrEmpty(faviconUrl))
+            return NotFound();
+
+        if (faviconUrl.Contains("/attachments/") && faviconUrl.Contains("/download"))
+        {
+            var parts = faviconUrl.Split('/');
+            var idIndex = Array.IndexOf(parts, "attachments") + 1;
+            if (idIndex > 0 && idIndex < parts.Length && int.TryParse(parts[idIndex], out var attachmentId))
+            {
+                var result = await _attachmentService.DownloadAsync(attachmentId);
+                if (result is not null)
+                    return File(result.Value.Stream, result.Value.ContentType, result.Value.FileName);
+            }
+        }
+
+        return Redirect(faviconUrl);
     }
 }

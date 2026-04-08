@@ -130,16 +130,16 @@ function AppContent() {
   }, [appSettings?.appName]);
 
   useEffect(() => {
-    if (appSettings?.logoUrl) {
+    if (appSettings?.faviconUrl) {
       let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
       if (!link) {
         link = document.createElement('link');
         link.rel = 'icon';
         document.head.appendChild(link);
       }
-      link.href = '/api/settings/logo';
+      link.href = '/api/settings/favicon';
     }
-  }, [appSettings?.logoUrl]);
+  }, [appSettings?.faviconUrl]);
 
   return (
     <ThemeProvider theme={theme}>
