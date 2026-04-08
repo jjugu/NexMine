@@ -7,7 +7,9 @@ using Nexmine.Application.Features.Dashboard.Interfaces;
 using Nexmine.Application.Features.Documents.Interfaces;
 using Nexmine.Application.Features.Export.Interfaces;
 using Nexmine.Application.Features.Issues.Interfaces;
+using Nexmine.Application.Features.IssueTemplates.Interfaces;
 using Nexmine.Application.Features.MyPage.Interfaces;
+using Nexmine.Application.Features.News.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
 using Nexmine.Application.Features.Reports.Interfaces;
 using Nexmine.Application.Features.Roadmap.Interfaces;
@@ -71,6 +73,12 @@ public static class DependencyInjection
 
         // My Page
         services.AddScoped<IMyPageService, MyPageService>();
+
+        // News
+        services.AddScoped<INewsService, NewsService>();
+
+        // Issue Templates
+        services.AddScoped<IIssueTemplateService, IssueTemplateService>();
 
         return services;
     }

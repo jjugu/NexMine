@@ -40,6 +40,7 @@ const AdminStatusesPage = lazy(() => import('./features/admin/components/AdminSt
 const AdminPrioritiesPage = lazy(() => import('./features/admin/components/AdminPrioritiesPage'));
 const AdminCustomFieldsPage = lazy(() => import('./features/admin/components/AdminCustomFieldsPage'));
 const AdminWorkflowsPage = lazy(() => import('./features/admin/components/AdminWorkflowsPage'));
+const AdminIssueTemplatesPage = lazy(() => import('./features/admin/components/AdminIssueTemplatesPage'));
 
 // Search
 const SearchResultsPage = lazy(() => import('./features/search/components/SearchResultsPage'));
@@ -49,6 +50,9 @@ const MyPage = lazy(() => import('./features/mypage/components/MyPage'));
 
 // Activity
 const ActivityPage = lazy(() => import('./features/activity/components/ActivityPage'));
+
+// News
+const NewsPage = lazy(() => import('./features/news/components/NewsPage'));
 
 // Reports
 const TimeReportPage = lazy(() => import('./features/reports/components/TimeReportPage'));
@@ -134,6 +138,7 @@ function AppContent() {
                 <Route path="/projects/:identifier/wiki/:slug/edit" element={<WikiPageEditor />} />
                 <Route path="/projects/:identifier/documents" element={<DocumentListPage />} />
                 <Route path="/projects/:identifier/documents/:id" element={<DocumentDetailPage />} />
+                <Route path="/projects/:identifier/news" element={<NewsPage />} />
                 <Route path="/projects/:identifier/activity" element={<ActivityPage />} />
                 <Route path="/projects/:identifier/settings" element={<ProjectSettingsPage />} />
 
@@ -155,6 +160,7 @@ function AppContent() {
                   <Route path="/admin/priorities" element={<AdminPrioritiesPage />} />
                   <Route path="/admin/custom-fields" element={<AdminCustomFieldsPage />} />
                   <Route path="/admin/workflows" element={<AdminWorkflowsPage />} />
+                  <Route path="/admin/issue-templates" element={<AdminIssueTemplatesPage />} />
                 </Route>
               </Route>
             </Route>

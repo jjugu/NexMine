@@ -35,6 +35,8 @@ public class NexmineDbContext : DbContext
     public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
     public DbSet<Watcher> Watchers => Set<Watcher>();
     public DbSet<UserDashboardWidget> UserDashboardWidgets => Set<UserDashboardWidget>();
+    public DbSet<News> News => Set<News>();
+    public DbSet<IssueTemplate> IssueTemplates => Set<IssueTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

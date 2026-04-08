@@ -115,6 +115,16 @@ if (app.Environment.IsDevelopment())
     var db = scope.ServiceProvider.GetRequiredService<NexmineDbContext>();
     db.Database.Migrate();
 
+    // Ensure admin password hash is compatible with current BCrypt version
+    var passwordHashService = scope.ServiceProvider
+        .GetRequiredService<Nexmine.Application.Features.Auth.Interfaces.IPasswordHashService>();
+    var admin = db.Users.FirstOrDefault(u => u.Username == "admin");
+    if (admin is not null && !passwordHashService.Verify("admin", admin.PasswordHash))
+    {
+        admin.PasswordHash = passwordHashService.Hash("admin");
+        db.SaveChanges();
+    }
+
     app.UseSwagger();
     app.UseSwaggerUI();
 }

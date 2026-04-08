@@ -37,6 +37,8 @@ import FlagIcon from '@mui/icons-material/Flag';
 import HistoryIcon from '@mui/icons-material/History';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
+import NewspaperIcon from '@mui/icons-material/Newspaper';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import { useIsFetching } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
@@ -61,6 +63,7 @@ const adminNavItems = [
   { label: '우선순위', icon: <PriorityHighIcon />, path: '/admin/priorities' },
   { label: '커스텀 필드', icon: <TuneIcon />, path: '/admin/custom-fields' },
   { label: '워크플로우', icon: <AccountTreeIcon />, path: '/admin/workflows' },
+  { label: '이슈 템플릿', icon: <ContentPasteIcon />, path: '/admin/issue-templates' },
 ];
 
 interface ProjectSubNavItem {
@@ -78,6 +81,7 @@ function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
     { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar` },
     { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki` },
     { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents` },
+    { label: '뉴스', icon: <NewspaperIcon />, path: `/projects/${identifier}/news` },
     { label: '로드맵', icon: <FlagIcon />, path: `/projects/${identifier}/roadmap` },
     { label: '활동', icon: <HistoryIcon />, path: `/projects/${identifier}/activity` },
     { label: '버전', icon: <NewReleasesIcon />, path: `/projects/${identifier}/versions` },

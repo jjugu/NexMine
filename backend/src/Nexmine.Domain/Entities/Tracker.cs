@@ -7,4 +7,5 @@ public class Tracker : BaseEntity
     public bool IsDefault { get; set; }
 
     public List<Issue> Issues { get; set; } = [];
+    public List<IssueTemplate> IssueTemplates { get; set; } = [];
 }

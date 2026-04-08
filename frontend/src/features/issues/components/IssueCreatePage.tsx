@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -14,7 +14,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import axiosInstance from '../../../api/axiosInstance';
-import type { IssueDetailDto, ProjectDto, CustomFieldDto } from '../../../api/generated/model';
+import type { IssueDetailDto, ProjectDto, CustomFieldDto, IssueTemplateDto } from '../../../api/generated/model';
 import {
   useTrackers,
   useIssueStatuses,
@@ -181,6 +181,7 @@ export default function IssueCreatePage() {
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
   const [customValues, setCustomValues] = useState<Record<number, string>>({});
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | ''>('');
 
   const trackersQuery = useTrackers();
   const statusesQuery = useIssueStatuses();
@@ -222,6 +223,8 @@ export default function IssueCreatePage() {
     register,
     handleSubmit,
     control,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateIssueFormData>({
     resolver: zodResolver(createIssueSchema),
@@ -241,6 +244,56 @@ export default function IssueCreatePage() {
       isPrivate: false,
     },
   });
+
+  const watchedTrackerId = watch('trackerId');
+
+  const templatesQuery = useQuery({
+    queryKey: ['issue-templates', identifier, watchedTrackerId],
+    queryFn: () =>
+      axiosInstance
+        .get<IssueTemplateDto[]>(`/projects/${identifier}/issue-templates`, {
+          params: { trackerId: watchedTrackerId },
+        })
+        .then((res) => res.data),
+    enabled: !!identifier && !!watchedTrackerId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const issueTemplates = templatesQuery.data ?? [];
+
+  // Auto-select default template when templates load or tracker changes
+  useEffect(() => {
+    if (issueTemplates.length > 0) {
+      const defaultTemplate = issueTemplates.find((t) => t.isDefault);
+      if (defaultTemplate) {
+        setSelectedTemplateId(defaultTemplate.id!);
+        if (defaultTemplate.subjectTemplate) {
+          setValue('subject', defaultTemplate.subjectTemplate);
+        }
+        if (defaultTemplate.descriptionTemplate) {
+          setValue('description', defaultTemplate.descriptionTemplate);
+        }
+      } else {
+        setSelectedTemplateId('');
+      }
+    } else {
+      setSelectedTemplateId('');
+    }
+  }, [issueTemplates, setValue]);
+
+  function handleTemplateChange(templateId: number | '') {
+    setSelectedTemplateId(templateId);
+    if (!templateId) return;
+    const template = issueTemplates.find((t) => t.id === templateId);
+    if (template) {
+      if (template.subjectTemplate) {
+        setValue('subject', template.subjectTemplate);
+      }
+      if (template.descriptionTemplate) {
+        setValue('description', template.descriptionTemplate);
+      }
+    }
+  }
 
   const createMutation = useMutation({
     mutationFn: (data: CreateIssueFormData) => {
@@ -366,13 +419,35 @@ export default function IssueCreatePage() {
                 )}
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 9 }}>
+            {issueTemplates.length > 0 && (
+              <Grid size={{ xs: 12, md: 3 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>템플릿</InputLabel>
+                  <Select
+                    value={selectedTemplateId}
+                    label="템플릿"
+                    onChange={(e) =>
+                      handleTemplateChange(e.target.value ? Number(e.target.value) : '')
+                    }
+                  >
+                    <MenuItem value="">없음</MenuItem>
+                    {issueTemplates.map((t) => (
+                      <MenuItem key={t.id} value={t.id}>
+                        {t.title}{t.isDefault ? ' (기본)' : ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
+            <Grid size={{ xs: 12, md: issueTemplates.length > 0 ? 6 : 9 }}>
               <TextField
                 label="제목 *"
                 fullWidth
                 error={!!errors.subject}
                 helperText={errors.subject?.message}
                 {...register('subject')}
+                InputLabelProps={{ shrink: !!watch('subject') }}
               />
             </Grid>
 
@@ -384,6 +459,7 @@ export default function IssueCreatePage() {
                 multiline
                 rows={4}
                 {...register('description')}
+                InputLabelProps={{ shrink: !!watch('description') }}
               />
             </Grid>
 

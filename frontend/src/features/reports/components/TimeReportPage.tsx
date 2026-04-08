@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Box, Typography, Button, TextField, Paper, Grid,
+  Box, Typography, Button, Paper, Grid,
   FormControl, InputLabel, Select, MenuItem,
   Accordion, AccordionSummary, AccordionDetails,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -13,6 +13,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs, { type Dayjs } from 'dayjs';
 import axiosInstance from '../../../api/axiosInstance';
 import type { ProjectDtoPagedResult } from '../../../api/generated/model';
 import type { AdminUserDtoPagedResult } from '../../../api/generated/model';
@@ -180,25 +182,19 @@ export default function TimeReportPage() {
       <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, mb: 3 }}>
         <Grid container spacing={2} alignItems="flex-end">
           <Grid size={{ xs: 12, sm: 6, md: 2 }}>
-            <TextField
+            <DatePicker
               label="시작일"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              fullWidth
-              size="small"
-              slotProps={{ inputLabel: { shrink: true } }}
+              value={from ? dayjs(from) : null}
+              onChange={(v: Dayjs | null) => setFrom(v ? v.format('YYYY-MM-DD') : '')}
+              slotProps={{ textField: { size: 'small', fullWidth: true } }}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 2 }}>
-            <TextField
+            <DatePicker
               label="종료일"
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              fullWidth
-              size="small"
-              slotProps={{ inputLabel: { shrink: true } }}
+              value={to ? dayjs(to) : null}
+              onChange={(v: Dayjs | null) => setTo(v ? v.format('YYYY-MM-DD') : '')}
+              slotProps={{ textField: { size: 'small', fullWidth: true } }}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 2 }}>

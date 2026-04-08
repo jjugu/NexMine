@@ -21,4 +21,5 @@ public class User : BaseEntity
     public List<WikiPageVersion> WikiPageEdits { get; set; } = [];
     public List<Attachment> Attachments { get; set; } = [];
     public List<Document> AuthoredDocuments { get; set; } = [];
+    public List<News> AuthoredNews { get; set; } = [];
 }
