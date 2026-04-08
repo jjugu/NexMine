@@ -10,18 +10,24 @@ import {
   MenuItem, Select, FormControl, InputLabel, Slider,
   FormControlLabel, Switch, Avatar, IconButton, LinearProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, Checkbox,
+  Snackbar, Autocomplete, Tooltip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import axiosInstance from '../../../api/axiosInstance';
 import type {
   IssueDetailDto, ProjectDto, JournalDto, TimeEntryDto, CustomFieldDto,
-  AllowedStatusDto,
+  AllowedStatusDto, WatcherDto, ProjectMemberDto,
 } from '../../../api/generated/model';
+import CopyIssueDialog from './CopyIssueDialog';
 import {
   useTrackers, useIssueStatuses, useIssuePriorities,
   useCategories, useVersions, useProjectMembers,
@@ -490,6 +496,163 @@ function TimeEntrySection({ issueId, projectId }: { issueId: number; projectId: 
   );
 }
 
+// ---------- watcher section ----------
+function WatcherSection({ issueId, members }: { issueId: number; members: ProjectMemberDto[] }) {
+  const queryClient = useQueryClient();
+  const [isAddOpen, setIsAddOpen] = useState(false);
+
+  // Fetch watcher list
+  const watchersQuery = useQuery({
+    queryKey: ['watchers', issueId],
+    queryFn: () =>
+      axiosInstance.get<WatcherDto[]>(`/issues/${issueId}/watchers`).then((r) => r.data),
+    enabled: !!issueId,
+  });
+
+  // Fetch my watch status
+  const watchStatusQuery = useQuery<{ isWatching: boolean }>({
+    queryKey: ['watchers', issueId, 'me'],
+    queryFn: () =>
+      axiosInstance.get(`/issues/${issueId}/watchers/me`).then((r) => r.data),
+    enabled: !!issueId,
+  });
+
+  const watchers = watchersQuery.data ?? [];
+  const isWatching = watchStatusQuery.data?.isWatching ?? false;
+
+  // Toggle my watch
+  const toggleWatchMutation = useMutation({
+    mutationFn: () =>
+      isWatching
+        ? axiosInstance.delete(`/issues/${issueId}/watchers/me`)
+        : axiosInstance.post(`/issues/${issueId}/watchers/me`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchers', issueId] });
+    },
+  });
+
+  // Add watcher
+  const addWatcherMutation = useMutation({
+    mutationFn: (userId: number) =>
+      axiosInstance.post(`/issues/${issueId}/watchers`, { userId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchers', issueId] });
+      setIsAddOpen(false);
+    },
+  });
+
+  // Remove watcher
+  const removeWatcherMutation = useMutation({
+    mutationFn: (userId: number) =>
+      axiosInstance.delete(`/issues/${issueId}/watchers/${userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchers', issueId] });
+    },
+  });
+
+  // Filter out members already watching
+  const watcherUserIds = new Set(watchers.map((w) => w.userId));
+  const addableMembers = members.filter((m) => !watcherUserIds.has(m.userId));
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="subtitle2">
+          감시자 ({watchers.length})
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip title={isWatching ? '감시 해제' : '감시하기'}>
+            <IconButton
+              size="small"
+              onClick={() => toggleWatchMutation.mutate()}
+              disabled={toggleWatchMutation.isPending}
+              color={isWatching ? 'primary' : 'default'}
+            >
+              {isWatching ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="감시자 추가">
+            <IconButton size="small" onClick={() => setIsAddOpen(true)}>
+              <PersonAddIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
+
+      {watchersQuery.isLoading && (
+        <Skeleton variant="rectangular" height={32} sx={{ borderRadius: 1 }} />
+      )}
+
+      {watchers.length > 0 ? (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+          {watchers.map((watcher) => (
+            <Chip
+              key={watcher.userId}
+              label={watcher.userName ?? ''}
+              size="small"
+              variant="outlined"
+              avatar={
+                <Avatar sx={{ width: 22, height: 22, fontSize: 11 }}>
+                  {(watcher.userName ?? '?')[0].toUpperCase()}
+                </Avatar>
+              }
+              onDelete={() =>
+                watcher.userId != null && removeWatcherMutation.mutate(watcher.userId)
+              }
+            />
+          ))}
+        </Box>
+      ) : (
+        !watchersQuery.isLoading && (
+          <Typography variant="body2" color="text.secondary">
+            감시자가 없습니다.
+          </Typography>
+        )
+      )}
+
+      {/* Add watcher dialog */}
+      {isAddOpen && (
+        <Box sx={{ mt: 1 }}>
+          <Autocomplete
+            size="small"
+            options={addableMembers}
+            getOptionLabel={(option) => option.username ?? ''}
+            renderOption={(props, option) => (
+              <li {...props} key={option.userId}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar sx={{ width: 24, height: 24, fontSize: 11 }}>
+                    {(option.username ?? '?')[0].toUpperCase()}
+                  </Avatar>
+                  <Typography variant="body2">{option.username}</Typography>
+                </Box>
+              </li>
+            )}
+            onChange={(_, value) => {
+              if (value?.userId != null) {
+                addWatcherMutation.mutate(value.userId);
+              }
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="멤버 검색"
+                placeholder="감시자로 추가할 멤버를 선택하세요"
+                autoFocus
+              />
+            )}
+            noOptionsText="추가 가능한 멤버가 없습니다"
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
+            <Button size="small" onClick={() => setIsAddOpen(false)}>
+              닫기
+            </Button>
+          </Box>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 // ---------- main component ----------
 export default function IssueDetailPage() {
   const { identifier, id } = useParams<{ identifier: string; id: string }>();
@@ -500,7 +663,11 @@ export default function IssueDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isCopyOpen, setIsCopyOpen] = useState(false);
   const [editCustomValues, setEditCustomValues] = useState<Record<number, string>>({});
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false, message: '', severity: 'success',
+  });
 
   // Reference data
   const trackersQuery = useTrackers();
@@ -736,6 +903,11 @@ export default function IssueDetailPage() {
         <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
           {!isEditing ? (
             <>
+              <Tooltip title="복사">
+                <IconButton onClick={() => setIsCopyOpen(true)}>
+                  <ContentCopyIcon />
+                </IconButton>
+              </Tooltip>
               <Button variant="outlined" startIcon={<EditIcon />} onClick={handleEdit}>
                 수정
               </Button>
@@ -1132,6 +1304,13 @@ export default function IssueDetailPage() {
         </>
       )}
 
+      {/* Watchers */}
+      {!isEditing && (
+        <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2, md: 3 }, mb: 3 }}>
+          <WatcherSection issueId={issueId} members={members} />
+        </Paper>
+      )}
+
       {/* Time Entries */}
       <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2, md: 3 }, mb: 3 }}>
         <TimeEntrySection issueId={issueId} projectId={issue.projectId ?? 0} />
@@ -1165,6 +1344,32 @@ export default function IssueDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Copy issue dialog */}
+      <CopyIssueDialog
+        open={isCopyOpen}
+        onClose={() => setIsCopyOpen(false)}
+        issueId={issueId}
+        currentProjectId={issue.projectId ?? 0}
+        currentProjectIdentifier={identifier ?? ''}
+        onSuccess={(message) => setSnackbar({ open: true, message, severity: 'success' })}
+      />
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

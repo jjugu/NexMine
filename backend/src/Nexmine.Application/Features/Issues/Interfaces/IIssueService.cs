@@ -12,4 +12,5 @@ public interface IIssueService
     Task<bool> DeleteAsync(int id);
     Task<IssueDetailDto?> UpdatePositionAsync(int id, UpdateIssuePositionRequest request, int userId);
     Task<int> BulkUpdateAsync(BulkUpdateIssuesRequest request, int userId);
+    Task<IssueDetailDto> CopyIssueAsync(int issueId, CopyIssueRequest request, int userId);
 }

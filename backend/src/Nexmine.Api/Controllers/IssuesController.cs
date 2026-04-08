@@ -114,6 +114,16 @@ public class IssuesController : ControllerBase
         return Ok(new { updatedCount });
     }
 
+    [HttpPost("{id:int}/copy")]
+    [ProducesResponseType(typeof(IssueDetailDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CopyIssueAsync(int id, [FromBody] CopyIssueRequest request)
+    {
+        var userId = User.GetUserId();
+        var copy = await _issueService.CopyIssueAsync(id, request, userId);
+        return CreatedAtAction("GetById", "Issues", new { id = copy.Id }, copy);
+    }
+
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

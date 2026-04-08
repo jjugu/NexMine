@@ -33,6 +33,7 @@ public class NexmineDbContext : DbContext
     public DbSet<CustomFieldProject> CustomFieldProjects => Set<CustomFieldProject>();
     public DbSet<CustomFieldTracker> CustomFieldTrackers => Set<CustomFieldTracker>();
     public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
+    public DbSet<Watcher> Watchers => Set<Watcher>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

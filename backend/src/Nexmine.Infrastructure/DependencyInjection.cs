@@ -11,6 +11,7 @@ using Nexmine.Application.Features.Projects.Interfaces;
 using Nexmine.Application.Features.Reports.Interfaces;
 using Nexmine.Application.Features.Roadmap.Interfaces;
 using Nexmine.Application.Features.Search.Interfaces;
+using Nexmine.Application.Features.Watchers.Interfaces;
 using Nexmine.Application.Features.Wiki.Interfaces;
 using Nexmine.Application.Features.Workflows.Interfaces;
 using Nexmine.Infrastructure.Services;
@@ -56,6 +57,9 @@ public static class DependencyInjection
 
         // Workflow service
         services.AddScoped<IWorkflowService, WorkflowService>();
+
+        // Watcher service
+        services.AddScoped<IWatcherService, WatcherService>();
 
         // Export & Reports
         services.AddScoped<IExportService, ExportService>();

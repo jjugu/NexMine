@@ -5,6 +5,7 @@ using Nexmine.Application.Features.CustomFields.Dtos;
 using Nexmine.Application.Features.CustomFields.Interfaces;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
+using Nexmine.Application.Features.Watchers.Interfaces;
 using Nexmine.Application.Features.Workflows.Interfaces;
 using Nexmine.Domain.Entities;
 using Nexmine.Infrastructure.Data;
@@ -17,6 +18,7 @@ public class IssueService : IIssueService
     private readonly IMapper _mapper;
     private readonly ICustomFieldService _customFieldService;
     private readonly IWorkflowService _workflowService;
+    private readonly IWatcherService _watcherService;
 
     private static readonly string[] TrackedFields =
     [
@@ -35,12 +37,13 @@ public class IssueService : IIssueService
         nameof(Issue.IsPrivate)
     ];
 
-    public IssueService(NexmineDbContext dbContext, IMapper mapper, ICustomFieldService customFieldService, IWorkflowService workflowService)
+    public IssueService(NexmineDbContext dbContext, IMapper mapper, ICustomFieldService customFieldService, IWorkflowService workflowService, IWatcherService watcherService)
     {
         _dbContext = dbContext;
         _mapper = mapper;
         _customFieldService = customFieldService;
         _workflowService = workflowService;
+        _watcherService = watcherService;
     }
 
     public async Task<PagedResult<IssueDto>> ListAsync(string projectIdentifier, IssueFilterParams filterParams)
@@ -662,6 +665,92 @@ public class IssueService : IIssueService
 
         await _dbContext.SaveChangesAsync();
         return issues.Count;
+    }
+
+    public async Task<IssueDetailDto> CopyIssueAsync(int issueId, CopyIssueRequest request, int userId)
+    {
+        var source = await _dbContext.Issues
+            .Include(i => i.Tracker)
+            .Include(i => i.Status)
+            .Include(i => i.Priority)
+            .Include(i => i.Category)
+            .Include(i => i.Version)
+            .Include(i => i.Author)
+            .Include(i => i.AssignedTo)
+            .FirstOrDefaultAsync(i => i.Id == issueId)
+            ?? throw new KeyNotFoundException("일감을 찾을 수 없습니다.");
+
+        var targetProjectId = request.TargetProjectId > 0 ? request.TargetProjectId : source.ProjectId;
+        var isSameProject = targetProjectId == source.ProjectId;
+
+        // Validate target project exists if different
+        if (!isSameProject)
+        {
+            var targetProject = await _dbContext.Projects.FindAsync(targetProjectId)
+                ?? throw new KeyNotFoundException("대상 프로젝트를 찾을 수 없습니다.");
+        }
+
+        // Get default status (New)
+        var defaultStatus = await _dbContext.IssueStatuses
+            .OrderBy(s => s.Position)
+            .FirstAsync();
+
+        // Calculate next position for kanban
+        var maxPosition = await _dbContext.Issues
+            .Where(i => i.ProjectId == targetProjectId && i.StatusId == defaultStatus.Id)
+            .MaxAsync(i => (int?)i.Position) ?? 0;
+
+        var copy = new Issue
+        {
+            ProjectId = targetProjectId,
+            TrackerId = source.TrackerId,
+            StatusId = defaultStatus.Id,
+            PriorityId = source.PriorityId,
+            CategoryId = isSameProject ? source.CategoryId : null,
+            VersionId = isSameProject ? source.VersionId : null,
+            AuthorId = userId,
+            AssignedToId = isSameProject ? source.AssignedToId : null,
+            Subject = $"복사: {source.Subject}",
+            Description = request.CopyDescription ? source.Description : null,
+            StartDate = source.StartDate,
+            DueDate = source.DueDate,
+            EstimatedHours = source.EstimatedHours,
+            DoneRatio = 0,
+            IsPrivate = source.IsPrivate,
+            Position = maxPosition + 1
+        };
+
+        _dbContext.Issues.Add(copy);
+        await _dbContext.SaveChangesAsync();
+
+        // Copy watchers if requested
+        if (request.CopyWatchers)
+        {
+            var sourceWatchers = await _dbContext.Watchers
+                .Where(w => w.WatchableType == "issue" && w.WatchableId == issueId)
+                .ToListAsync();
+
+            foreach (var watcher in sourceWatchers)
+            {
+                await _watcherService.AddWatcherAsync("issue", copy.Id, watcher.UserId);
+            }
+        }
+
+        // Reload with navigation properties
+        var created = await _dbContext.Issues
+            .Include(i => i.Tracker)
+            .Include(i => i.Status)
+            .Include(i => i.Priority)
+            .Include(i => i.Category)
+            .Include(i => i.Version)
+            .Include(i => i.Author)
+            .Include(i => i.AssignedTo)
+            .Include(i => i.ParentIssue)
+            .FirstAsync(i => i.Id == copy.Id);
+
+        var createdDto = MapToDetailDto(created);
+        createdDto.CustomValues = await _customFieldService.GetValuesAsync("issue", created.Id);
+        return createdDto;
     }
 
     private static IssueDetailDto MapToDetailDto(Issue issue)
