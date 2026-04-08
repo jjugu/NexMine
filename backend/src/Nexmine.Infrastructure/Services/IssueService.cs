@@ -327,16 +327,27 @@ public class IssueService : IIssueService
         }
 
         // Capture old values for journal
+        // Resolve names for FK fields before capturing old values
+        var oldStatusName = (await _dbContext.IssueStatuses.FindAsync(issue.StatusId))?.Name;
+        var oldTrackerName = (await _dbContext.Trackers.FindAsync(issue.TrackerId))?.Name;
+        var oldPriorityName = (await _dbContext.IssuePriorities.FindAsync(issue.PriorityId))?.Name;
+        var oldAssigneeName = issue.AssignedToId.HasValue
+            ? (await _dbContext.Users.FindAsync(issue.AssignedToId.Value))?.Username : null;
+        var oldCategoryName = issue.CategoryId.HasValue
+            ? (await _dbContext.IssueCategories.FindAsync(issue.CategoryId.Value))?.Name : null;
+        var oldVersionName = issue.VersionId.HasValue
+            ? (await _dbContext.Versions.FindAsync(issue.VersionId.Value))?.Name : null;
+
         var oldValues = new Dictionary<string, string?>
         {
             [nameof(Issue.Subject)] = issue.Subject,
             [nameof(Issue.Description)] = issue.Description,
-            [nameof(Issue.StatusId)] = issue.StatusId.ToString(),
-            [nameof(Issue.TrackerId)] = issue.TrackerId.ToString(),
-            [nameof(Issue.PriorityId)] = issue.PriorityId.ToString(),
-            [nameof(Issue.AssignedToId)] = issue.AssignedToId?.ToString(),
-            [nameof(Issue.CategoryId)] = issue.CategoryId?.ToString(),
-            [nameof(Issue.VersionId)] = issue.VersionId?.ToString(),
+            [nameof(Issue.StatusId)] = oldStatusName,
+            [nameof(Issue.TrackerId)] = oldTrackerName,
+            [nameof(Issue.PriorityId)] = oldPriorityName,
+            [nameof(Issue.AssignedToId)] = oldAssigneeName,
+            [nameof(Issue.CategoryId)] = oldCategoryName,
+            [nameof(Issue.VersionId)] = oldVersionName,
             [nameof(Issue.StartDate)] = issue.StartDate?.ToString("yyyy-MM-dd"),
             [nameof(Issue.DueDate)] = issue.DueDate?.ToString("yyyy-MM-dd"),
             [nameof(Issue.DoneRatio)] = issue.DoneRatio.ToString(),
@@ -397,17 +408,28 @@ public class IssueService : IIssueService
             }
         }
 
+        // Resolve names for new FK values
+        var newStatusName = (await _dbContext.IssueStatuses.FindAsync(issue.StatusId))?.Name;
+        var newTrackerName = (await _dbContext.Trackers.FindAsync(issue.TrackerId))?.Name;
+        var newPriorityName = (await _dbContext.IssuePriorities.FindAsync(issue.PriorityId))?.Name;
+        var newAssigneeName = issue.AssignedToId.HasValue
+            ? (await _dbContext.Users.FindAsync(issue.AssignedToId.Value))?.Username : null;
+        var newCategoryName = issue.CategoryId.HasValue
+            ? (await _dbContext.IssueCategories.FindAsync(issue.CategoryId.Value))?.Name : null;
+        var newVersionName = issue.VersionId.HasValue
+            ? (await _dbContext.Versions.FindAsync(issue.VersionId.Value))?.Name : null;
+
         // Capture new values
         var newValues = new Dictionary<string, string?>
         {
             [nameof(Issue.Subject)] = issue.Subject,
             [nameof(Issue.Description)] = issue.Description,
-            [nameof(Issue.StatusId)] = issue.StatusId.ToString(),
-            [nameof(Issue.TrackerId)] = issue.TrackerId.ToString(),
-            [nameof(Issue.PriorityId)] = issue.PriorityId.ToString(),
-            [nameof(Issue.AssignedToId)] = issue.AssignedToId?.ToString(),
-            [nameof(Issue.CategoryId)] = issue.CategoryId?.ToString(),
-            [nameof(Issue.VersionId)] = issue.VersionId?.ToString(),
+            [nameof(Issue.StatusId)] = newStatusName,
+            [nameof(Issue.TrackerId)] = newTrackerName,
+            [nameof(Issue.PriorityId)] = newPriorityName,
+            [nameof(Issue.AssignedToId)] = newAssigneeName,
+            [nameof(Issue.CategoryId)] = newCategoryName,
+            [nameof(Issue.VersionId)] = newVersionName,
             [nameof(Issue.StartDate)] = issue.StartDate?.ToString("yyyy-MM-dd"),
             [nameof(Issue.DueDate)] = issue.DueDate?.ToString("yyyy-MM-dd"),
             [nameof(Issue.DoneRatio)] = issue.DoneRatio.ToString(),
@@ -632,15 +654,15 @@ public class IssueService : IIssueService
 
             if (request.StatusId.HasValue && request.StatusId.Value != issue.StatusId)
             {
+                var oldName = issue.Status?.Name ?? issue.StatusId.ToString();
                 journalDetails.Add(new JournalDetail
                 {
                     PropertyName = nameof(Issue.StatusId),
-                    OldValue = issue.StatusId.ToString(),
-                    NewValue = request.StatusId.Value.ToString()
+                    OldValue = oldName,
+                    NewValue = newStatus?.Name ?? request.StatusId.Value.ToString()
                 });
                 issue.StatusId = request.StatusId.Value;
 
-                // Auto-set DoneRatio=100 when status changes to IsClosed=true
                 if (newStatus is not null && newStatus.IsClosed && issue.DoneRatio != 100)
                 {
                     journalDetails.Add(new JournalDetail
@@ -655,37 +677,44 @@ public class IssueService : IIssueService
 
             if (request.PriorityId.HasValue && request.PriorityId.Value != issue.PriorityId)
             {
+                var oldPName = (await _dbContext.IssuePriorities.FindAsync(issue.PriorityId))?.Name ?? issue.PriorityId.ToString();
+                var newPName = (await _dbContext.IssuePriorities.FindAsync(request.PriorityId.Value))?.Name ?? request.PriorityId.Value.ToString();
                 journalDetails.Add(new JournalDetail
                 {
                     PropertyName = nameof(Issue.PriorityId),
-                    OldValue = issue.PriorityId.ToString(),
-                    NewValue = request.PriorityId.Value.ToString()
+                    OldValue = oldPName,
+                    NewValue = newPName
                 });
                 issue.PriorityId = request.PriorityId.Value;
             }
 
             if (request.TrackerId.HasValue && request.TrackerId.Value != issue.TrackerId)
             {
+                var oldTName = issue.Tracker?.Name ?? issue.TrackerId.ToString();
+                var newTName = (await _dbContext.Trackers.FindAsync(request.TrackerId.Value))?.Name ?? request.TrackerId.Value.ToString();
                 journalDetails.Add(new JournalDetail
                 {
                     PropertyName = nameof(Issue.TrackerId),
-                    OldValue = issue.TrackerId.ToString(),
-                    NewValue = request.TrackerId.Value.ToString()
+                    OldValue = oldTName,
+                    NewValue = newTName
                 });
                 issue.TrackerId = request.TrackerId.Value;
             }
 
             if (request.AssignedToId.HasValue)
             {
-                // 0 means unassign
                 int? newAssignedToId = request.AssignedToId.Value == 0 ? null : request.AssignedToId.Value;
                 if (newAssignedToId != issue.AssignedToId)
                 {
+                    var oldAName = issue.AssignedToId.HasValue
+                        ? (await _dbContext.Users.FindAsync(issue.AssignedToId.Value))?.Username : null;
+                    var newAName = newAssignedToId.HasValue
+                        ? (await _dbContext.Users.FindAsync(newAssignedToId.Value))?.Username : null;
                     journalDetails.Add(new JournalDetail
                     {
                         PropertyName = nameof(Issue.AssignedToId),
-                        OldValue = issue.AssignedToId?.ToString(),
-                        NewValue = newAssignedToId?.ToString()
+                        OldValue = oldAName,
+                        NewValue = newAName
                     });
                     issue.AssignedToId = newAssignedToId;
                 }
