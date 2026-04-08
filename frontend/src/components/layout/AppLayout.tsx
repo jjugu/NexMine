@@ -36,6 +36,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import FlagIcon from '@mui/icons-material/Flag';
 import HistoryIcon from '@mui/icons-material/History';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
 import { useIsFetching } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
@@ -46,6 +47,7 @@ const DRAWER_COLLAPSED_WIDTH = 56;
 
 const navItems = [
   { label: '대시보드', icon: <DashboardIcon />, path: '/dashboard' },
+  { label: '내 페이지', icon: <DashboardCustomizeIcon />, path: '/my/page' },
   { label: '프로젝트', icon: <FolderIcon />, path: '/projects' },
   { label: '활동', icon: <HistoryIcon />, path: '/activity' },
   { label: '시간 보고서', icon: <AssessmentIcon />, path: '/reports/time' },

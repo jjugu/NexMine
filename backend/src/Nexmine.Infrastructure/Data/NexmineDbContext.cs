@@ -34,6 +34,7 @@ public class NexmineDbContext : DbContext
     public DbSet<CustomFieldTracker> CustomFieldTrackers => Set<CustomFieldTracker>();
     public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
     public DbSet<Watcher> Watchers => Set<Watcher>();
+    public DbSet<UserDashboardWidget> UserDashboardWidgets => Set<UserDashboardWidget>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

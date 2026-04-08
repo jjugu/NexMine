@@ -7,6 +7,7 @@ using Nexmine.Application.Features.Dashboard.Interfaces;
 using Nexmine.Application.Features.Documents.Interfaces;
 using Nexmine.Application.Features.Export.Interfaces;
 using Nexmine.Application.Features.Issues.Interfaces;
+using Nexmine.Application.Features.MyPage.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
 using Nexmine.Application.Features.Reports.Interfaces;
 using Nexmine.Application.Features.Roadmap.Interfaces;
@@ -67,6 +68,9 @@ public static class DependencyInjection
 
         // Roadmap
         services.AddScoped<IRoadmapService, RoadmapService>();
+
+        // My Page
+        services.AddScoped<IMyPageService, MyPageService>();
 
         return services;
     }

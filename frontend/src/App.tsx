@@ -44,6 +44,9 @@ const AdminWorkflowsPage = lazy(() => import('./features/admin/components/AdminW
 // Search
 const SearchResultsPage = lazy(() => import('./features/search/components/SearchResultsPage'));
 
+// My Page
+const MyPage = lazy(() => import('./features/mypage/components/MyPage'));
+
 // Activity
 const ActivityPage = lazy(() => import('./features/activity/components/ActivityPage'));
 
@@ -113,6 +116,7 @@ function AppContent() {
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/my/page" element={<MyPage />} />
                 <Route path="/projects" element={<ProjectListPage />} />
                 <Route path="/projects/:identifier" element={<ProjectDetailPage />} />
                 <Route path="/projects/:identifier/issues" element={<IssueListPage />} />
