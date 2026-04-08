@@ -47,6 +47,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import axiosInstance from '../../api/axiosInstance';
 import type { SavedQueryDto, ProjectDto } from '../../api/generated/model';
+import RealtimeNotifications from '../common/RealtimeNotifications';
 
 const DRAWER_WIDTH = 240;
 const DRAWER_COLLAPSED_WIDTH = 56;
@@ -532,6 +533,9 @@ export default function AppLayout() {
           <Outlet />
         </Box>
       </Box>
+
+      {/* Global realtime notifications */}
+      <RealtimeNotifications />
     </Box>
   );
 }

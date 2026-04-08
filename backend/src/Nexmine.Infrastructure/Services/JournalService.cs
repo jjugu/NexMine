@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
+using Nexmine.Application.Features.Realtime.Interfaces;
 using Nexmine.Domain.Entities;
 using Nexmine.Infrastructure.Data;
 
@@ -9,10 +10,12 @@ namespace Nexmine.Infrastructure.Services;
 public class JournalService : IJournalService
 {
     private readonly NexmineDbContext _dbContext;
+    private readonly IRealtimeNotificationService _realtimeNotificationService;
 
-    public JournalService(NexmineDbContext dbContext)
+    public JournalService(NexmineDbContext dbContext, IRealtimeNotificationService realtimeNotificationService)
     {
         _dbContext = dbContext;
+        _realtimeNotificationService = realtimeNotificationService;
     }
 
     public async Task<List<JournalDto>> ListByIssueAsync(int issueId)
@@ -61,10 +64,23 @@ public class JournalService : IJournalService
 
         var user = await _dbContext.Users.FindAsync(userId);
 
+        var userName = $"{user!.FirstName} {user.LastName}".Trim();
+
+        // Send realtime notifications
+        var issue = await _dbContext.Issues
+            .Include(i => i.Project)
+            .FirstOrDefaultAsync(i => i.Id == issueId);
+        if (issue is not null)
+        {
+            await _realtimeNotificationService.NotifyIssueCommentedAsync(
+                issue.Project.Identifier, issueId, issue.Subject, userName, request.Notes);
+            await _realtimeNotificationService.NotifyIssueChangedAsync(issueId, userName);
+        }
+
         return new JournalDto
         {
             Id = journal.Id,
-            UserName = $"{user!.FirstName} {user.LastName}".Trim(),
+            UserName = userName,
             Notes = journal.Notes,
             CreatedAt = journal.CreatedAt,
             Details = []

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -17,6 +17,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -24,6 +25,8 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import axiosInstance from '../../../api/axiosInstance';
+import { useSignalR } from '../../../hooks/useSignalR';
+import { useAuthStore } from '../../../stores/authStore';
 import type {
   IssueDetailDto, ProjectDto, JournalDto, TimeEntryDto, CustomFieldDto,
   AllowedStatusDto, WatcherDto, ProjectMemberDto,
@@ -671,6 +674,95 @@ export default function IssueDetailPage() {
     open: false, message: '', severity: 'success',
   });
 
+  // --- SignalR realtime collaboration ---
+  const { isConnected, on, invoke } = useSignalR();
+  const currentUser = useAuthStore((s) => s.user);
+
+  interface ActiveUser {
+    userId: number;
+    userName: string;
+    connectionId: string;
+  }
+
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
+  const [editingUsers, setEditingUsers] = useState<string[]>([]);
+  const [remoteChangeAlert, setRemoteChangeAlert] = useState<string | null>(null);
+
+  // Join/Leave issue room on mount/unmount
+  useEffect(() => {
+    if (!isConnected || !issueId) return;
+    invoke('JoinIssue', issueId);
+    return () => {
+      invoke('LeaveIssue', issueId);
+    };
+  }, [isConnected, issueId, invoke]);
+
+  // Notify editing state to other users
+  const notifyEditingStart = useCallback(() => {
+    if (isConnected && issueId) {
+      invoke('StartEditingIssue', issueId);
+    }
+  }, [isConnected, issueId, invoke]);
+
+  const notifyEditingStop = useCallback(() => {
+    if (isConnected && issueId) {
+      invoke('StopEditingIssue', issueId);
+    }
+  }, [isConnected, issueId, invoke]);
+
+  // Listen for SignalR events related to issue collaboration
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const unsubJoined = on('UserJoinedIssue', (...args: unknown[]) => {
+      const data = args[0] as { issueId: number; userId: number; userName: string; connectionId: string };
+      if (data.issueId !== issueId) return;
+      setActiveUsers((prev) => {
+        if (prev.some((u) => u.connectionId === data.connectionId)) return prev;
+        return [...prev, { userId: data.userId, userName: data.userName, connectionId: data.connectionId }];
+      });
+    });
+
+    const unsubLeft = on('UserLeftIssue', (...args: unknown[]) => {
+      const data = args[0] as { issueId: number; userId: number; userName: string; connectionId: string };
+      if (data.issueId !== issueId) return;
+      setActiveUsers((prev) => prev.filter((u) => u.connectionId !== data.connectionId));
+      // Also remove from editing users if they left
+      setEditingUsers((prev) => prev.filter((name) => name !== data.userName));
+    });
+
+    const unsubStartedEditing = on('UserStartedEditing', (...args: unknown[]) => {
+      const data = args[0] as { issueId: number; userId: number; userName: string };
+      if (data.issueId !== issueId) return;
+      if (data.userName === currentUser?.username) return;
+      setEditingUsers((prev) => {
+        if (prev.includes(data.userName)) return prev;
+        return [...prev, data.userName];
+      });
+    });
+
+    const unsubStoppedEditing = on('UserStoppedEditing', (...args: unknown[]) => {
+      const data = args[0] as { issueId: number; userId: number; userName: string };
+      if (data.issueId !== issueId) return;
+      setEditingUsers((prev) => prev.filter((name) => name !== data.userName));
+    });
+
+    const unsubChanged = on('IssueChanged', (...args: unknown[]) => {
+      const data = args[0] as { issueId: number; userName: string };
+      if (data.issueId !== issueId) return;
+      if (data.userName === currentUser?.username) return;
+      setRemoteChangeAlert(data.userName);
+    });
+
+    return () => {
+      unsubJoined();
+      unsubLeft();
+      unsubStartedEditing();
+      unsubStoppedEditing();
+      unsubChanged();
+    };
+  }, [isConnected, on, issueId, currentUser?.username]);
+
   // Reference data
   const trackersQuery = useTrackers();
   const statusesQuery = useIssueStatuses();
@@ -777,6 +869,7 @@ export default function IssueDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['issues', identifier] });
       setIsEditing(false);
       setServerError(null);
+      notifyEditingStop();
     },
     onError: (err: unknown) => {
       const axiosError = err as { response?: { data?: { detail?: string; title?: string } } };
@@ -809,12 +902,14 @@ export default function IssueDetailPage() {
     setEditCustomValues(cvMap);
     setIsEditing(true);
     setServerError(null);
+    notifyEditingStart();
   }
 
   function handleCancelEdit() {
     setIsEditing(false);
     setServerError(null);
     reset();
+    notifyEditingStop();
   }
 
   function handleFormSubmit(data: UpdateIssueFormData) {
@@ -906,6 +1001,60 @@ export default function IssueDetailPage() {
         </Link>
         <Typography color="text.primary">#{issue.id}</Typography>
       </Breadcrumbs>
+
+      {/* Active users viewing this issue */}
+      {activeUsers.length > 0 && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1, flexWrap: 'wrap' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+            현재 조회 중:
+          </Typography>
+          {activeUsers
+            .filter((u) => u.userName !== currentUser?.username)
+            .map((u) => (
+              <Chip
+                key={u.connectionId}
+                label={u.userName}
+                size="small"
+                variant="outlined"
+                avatar={
+                  <Avatar sx={{ width: 20, height: 20, fontSize: 10 }}>
+                    {u.userName[0].toUpperCase()}
+                  </Avatar>
+                }
+              />
+            ))}
+        </Box>
+      )}
+
+      {/* Remote editing warning */}
+      {editingUsers.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {editingUsers.join(', ')}님이 이 이슈를 편집 중입니다
+        </Alert>
+      )}
+
+      {/* Remote change alert */}
+      {remoteChangeAlert && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Button
+              size="small"
+              startIcon={<RefreshIcon />}
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['issue', issueId] });
+                queryClient.invalidateQueries({ queryKey: ['journals', issueId] });
+                setRemoteChangeAlert(null);
+              }}
+            >
+              새로고침
+            </Button>
+          }
+        >
+          이 이슈가 {remoteChangeAlert}님에 의해 수정되었습니다. 새로고침하시겠습니까?
+        </Alert>
+      )}
 
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 1 }}>

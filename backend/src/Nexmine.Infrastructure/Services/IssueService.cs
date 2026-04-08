@@ -5,6 +5,7 @@ using Nexmine.Application.Features.CustomFields.Dtos;
 using Nexmine.Application.Features.CustomFields.Interfaces;
 using Nexmine.Application.Features.Issues.Dtos;
 using Nexmine.Application.Features.Issues.Interfaces;
+using Nexmine.Application.Features.Realtime.Interfaces;
 using Nexmine.Application.Features.Watchers.Interfaces;
 using Nexmine.Application.Features.Workflows.Interfaces;
 using Nexmine.Domain.Entities;
@@ -19,6 +20,7 @@ public class IssueService : IIssueService
     private readonly ICustomFieldService _customFieldService;
     private readonly IWorkflowService _workflowService;
     private readonly IWatcherService _watcherService;
+    private readonly IRealtimeNotificationService _realtimeNotificationService;
 
     private static readonly string[] TrackedFields =
     [
@@ -37,13 +39,20 @@ public class IssueService : IIssueService
         nameof(Issue.IsPrivate)
     ];
 
-    public IssueService(NexmineDbContext dbContext, IMapper mapper, ICustomFieldService customFieldService, IWorkflowService workflowService, IWatcherService watcherService)
+    public IssueService(
+        NexmineDbContext dbContext,
+        IMapper mapper,
+        ICustomFieldService customFieldService,
+        IWorkflowService workflowService,
+        IWatcherService watcherService,
+        IRealtimeNotificationService realtimeNotificationService)
     {
         _dbContext = dbContext;
         _mapper = mapper;
         _customFieldService = customFieldService;
         _workflowService = workflowService;
         _watcherService = watcherService;
+        _realtimeNotificationService = realtimeNotificationService;
     }
 
     public async Task<PagedResult<IssueDto>> ListAsync(string projectIdentifier, IssueFilterParams filterParams)
@@ -247,6 +256,14 @@ public class IssueService : IIssueService
 
         var createdDto = MapToDetailDto(created);
         createdDto.CustomValues = await _customFieldService.GetValuesAsync("issue", created.Id);
+
+        // Send realtime notification
+        var authorName = created.Author is not null
+            ? $"{created.Author.FirstName} {created.Author.LastName}".Trim()
+            : "Unknown";
+        await _realtimeNotificationService.NotifyIssueCreatedAsync(
+            projectIdentifier, created.Id, created.Subject, authorName);
+
         return createdDto;
     }
 
@@ -421,6 +438,20 @@ public class IssueService : IIssueService
 
         var updatedDto = MapToDetailDto(updated);
         updatedDto.CustomValues = await _customFieldService.GetValuesAsync("issue", updated.Id);
+
+        // Send realtime notifications
+        var project = await _dbContext.Projects.FindAsync(updated.ProjectId);
+        if (project is not null)
+        {
+            var user = await _dbContext.Users.FindAsync(userId);
+            var userName = user is not null
+                ? $"{user.FirstName} {user.LastName}".Trim()
+                : "Unknown";
+            await _realtimeNotificationService.NotifyIssueUpdatedAsync(
+                project.Identifier, updated.Id, updated.Subject, userName);
+            await _realtimeNotificationService.NotifyIssueChangedAsync(updated.Id, userName);
+        }
+
         return updatedDto;
     }
 
