@@ -585,6 +585,17 @@ export default function AppLayout() {
               <Divider />
               <MenuItem
                 onClick={() => {
+                  navigate('/my/settings');
+                  handleMenuClose();
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <SettingsIcon fontSize="small" />
+                </ListItemIcon>
+                {t('nav.preferences')}
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
                   const nextLang = i18n.language === 'ko' ? 'en' : 'ko';
                   i18n.changeLanguage(nextLang);
                   localStorage.setItem('nexmine-language', nextLang);

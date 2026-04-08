@@ -31,7 +31,8 @@
     "news": "News",
     "roadmap": "Roadmap",
     "versions": "Versions",
-    "settings": "Settings"
+    "settings": "Settings",
+    "preferences": "Preferences"
   },
   "admin": {
     "title": "Admin",

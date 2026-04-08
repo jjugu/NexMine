@@ -96,7 +96,8 @@ public class AuthService : IAuthService
         user.LastLoginAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();
 
-        return await GenerateAuthResponseAsync(user, ipAddress);
+        var refreshTokenExpiryDays = request.RememberMe ? 30 : 7;
+        return await GenerateAuthResponseAsync(user, ipAddress, refreshTokenExpiryDays);
     }
 
     public async Task<AuthResponse> RefreshAsync(string refreshToken, string? ipAddress)
@@ -228,7 +229,7 @@ public class AuthService : IAuthService
         return username;
     }
 
-    private async Task<AuthResponse> GenerateAuthResponseAsync(User user, string? ipAddress)
+    private async Task<AuthResponse> GenerateAuthResponseAsync(User user, string? ipAddress, int refreshTokenExpiryDays = 7)
     {
         var accessToken = _jwtTokenService.GenerateAccessToken(user);
         var refreshTokenValue = _jwtTokenService.GenerateRefreshToken();
@@ -236,7 +237,7 @@ public class AuthService : IAuthService
         var refreshToken = new RefreshToken
         {
             Token = refreshTokenValue,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiryDays),
             CreatedByIp = ipAddress,
             UserId = user.Id
         };

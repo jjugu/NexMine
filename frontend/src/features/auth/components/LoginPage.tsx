@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Box, Card, CardContent, TextField, Button, Typography,
   Link as MuiLink, Alert, CircularProgress, Divider,
+  FormControlLabel, Checkbox,
 } from '@mui/material';
 import { GoogleLogin } from '@react-oauth/google';
 import type { CredentialResponse } from '@react-oauth/google';
@@ -25,6 +26,7 @@ export default function LoginPage() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const { data: registrationMode } = useQuery({
     queryKey: ['registration-mode'],
@@ -45,7 +47,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     axiosInstance
-      .post('/Auth/login', data, { withCredentials: true })
+      .post('/Auth/login', { ...data, rememberMe }, { withCredentials: true })
       .then((res) => {
         const { accessToken, user } = res.data;
         setAuth(user, accessToken);
@@ -120,6 +122,17 @@ export default function LoginPage() {
             error={!!errors.password}
             helperText={errors.password?.message}
             {...register('password')}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                size="small"
+              />
+            }
+            label="로그인 유지"
+            sx={{ mt: -1 }}
           />
           <Button
             type="submit"

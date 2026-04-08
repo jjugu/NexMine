@@ -19,6 +19,7 @@ using Nexmine.Application.Features.Integrations.Interfaces;
 using Nexmine.Application.Features.SavedQueries.Interfaces;
 using Nexmine.Application.Features.Search.Interfaces;
 using Nexmine.Application.Features.Settings.Interfaces;
+using Nexmine.Application.Features.UserPreferences.Interfaces;
 using Nexmine.Application.Features.Watchers.Interfaces;
 using Nexmine.Application.Features.Wiki.Interfaces;
 using Nexmine.Application.Features.Workflows.Interfaces;
@@ -100,6 +101,9 @@ public static class DependencyInjection
 
         // Integrations
         services.AddScoped<IGoogleChatService, GoogleChatService>();
+
+        // User Preferences
+        services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 
         return services;
     }

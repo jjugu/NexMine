@@ -47,7 +47,8 @@ public class AuthController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         var response = await _authService.LoginAsync(request, ipAddress);
 
-        SetRefreshTokenCookie(response.RefreshToken!);
+        var cookieExpiryDays = request.RememberMe ? 30 : 7;
+        SetRefreshTokenCookie(response.RefreshToken!, cookieExpiryDays);
 
         return Ok(response);
     }
@@ -134,14 +135,14 @@ public class AuthController : ControllerBase
         return Ok(user);
     }
 
-    private void SetRefreshTokenCookie(string refreshToken)
+    private void SetRefreshTokenCookie(string refreshToken, int expiryDays = 7)
     {
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Strict,
-            Expires = DateTime.UtcNow.AddDays(7)
+            Expires = DateTime.UtcNow.AddDays(expiryDays)
         };
 
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);

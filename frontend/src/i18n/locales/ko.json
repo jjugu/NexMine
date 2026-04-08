@@ -31,7 +31,8 @@
     "news": "뉴스",
     "roadmap": "로드맵",
     "versions": "버전",
-    "settings": "설정"
+    "settings": "설정",
+    "preferences": "환경설정"
   },
   "admin": {
     "title": "관리자",

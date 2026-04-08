@@ -68,6 +68,9 @@ const ForumPage = lazy(() => import('./features/forums/components/ForumPage'));
 // Reports
 const TimeReportPage = lazy(() => import('./features/reports/components/TimeReportPage'));
 
+// User Settings
+const UserSettingsPage = lazy(() => import('./features/settings/components/UserSettingsPage'));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, refetchOnWindowFocus: false },
@@ -163,6 +166,7 @@ function AppContent() {
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/my/page" element={<MyPage />} />
+                <Route path="/my/settings" element={<UserSettingsPage />} />
                 <Route path="/projects" element={<ProjectListPage />} />
                 <Route path="/projects/:identifier" element={<ProjectDetailPage />} />
                 <Route path="/projects/:identifier/issues" element={<IssueListPage />} />
