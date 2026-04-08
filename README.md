@@ -10,7 +10,9 @@ Redmine 스타일의 독립형 프로젝트 관리 웹 애플리케이션.
 | Backend | ASP.NET Core 9, EF Core 9, SQLite |
 | Frontend | React 19, TypeScript, Vite, MUI 7 |
 | 상태관리 | TanStack Query (서버), Zustand (클라이언트) |
-| 인증 | JWT + Refresh Token rotation |
+| 인증 | JWT + Refresh Token rotation, Google OAuth |
+| 실시간 | SignalR WebSocket |
+| 다국어 | react-i18next (한국어/영어) |
 | API 코드젠 | Swagger + Orval |
 | 테스트 | xUnit (백엔드), Vitest + Testing Library (프론트) |
 
@@ -19,11 +21,19 @@ Redmine 스타일의 독립형 프로젝트 관리 웹 애플리케이션.
 ### 프로젝트 관리
 - 다중 프로젝트, 멤버십, 역할 기반 권한
 - 프로젝트별 대시보드, 설정, 멤버 관리
+- **모듈 on/off** - 프로젝트별 위키/포럼/간트 등 사용 여부 토글
+- **프로젝트 복사/템플릿** 지원
 
 ### 이슈 트래킹
 - CRUD, 필터링, 검색, 변경 이력(Journal), 시간 기록
 - 이슈 관계 (blocks, precedes, duplicates 등)
-- 커스텀 필드 (텍스트, 정수, 실수, 날짜, 불린, 목록, 링크 — 프로젝트/트래커별 설정)
+- **커스텀 필드** (텍스트, 정수, 실수, 날짜, 불린, 목록, 링크)
+- **이슈 템플릿** - 트래커별 제목/설명 자동 채움
+- **일괄 편집** - 여러 이슈 상태/담당자/우선순위 일괄 변경
+- **이슈 복사** - 같은/다른 프로젝트로 이슈 복제
+- **워쳐(감시자)** - 이슈 변경 알림 대상 관리
+- **저장된 필터** - 자주 쓰는 필터 조합 저장/공유
+- **CSV/PDF 내보내기** - 필터 적용 상태 그대로 다운로드
 
 ### 워크플로우
 - 역할+트래커별 상태 전이 규칙 매트릭스
@@ -32,28 +42,55 @@ Redmine 스타일의 독립형 프로젝트 관리 웹 애플리케이션.
 
 ### 시각화
 - **칸반 보드** - 드래그 앤 드롭, 낙관적 업데이트
-- **간트차트** - Day/Week/Month 뷰, 드래그 이동/리사이즈
-- **캘린더** - FullCalendar 기반 일정 관리
+- **간트차트** - Day/Week/Month 뷰, 드래그 이동/리사이즈, 의존성 화살표
+- **캘린더** - FullCalendar 기반 일정 관리, 이벤트 드래그/리사이즈
 - **대시보드** - 상태별 통계, 도넛/바 차트, 기한 초과 목록
+- **로드맵** - 버전별 이슈 진행률 시각화
 
 ### 콘텐츠
 - **위키** - Tiptap WYSIWYG 에디터, 트리 구조, 버전 히스토리
 - **문서 관리** - 첨부파일 업로드/다운로드
+- **뉴스** - 프로젝트별 공지사항 게시
+- **포럼/게시판** - 주제+답글, 고정/잠금 기능
 
 ### 활동 피드
 - 글로벌/프로젝트별 활동 타임라인
 - 이슈 생성/수정, 위키 편집, 문서 등록 집계
-- 타입별 필터, 상대 시간 표시, 클릭 시 해당 리소스 이동
+- 타입별 필터, 상대 시간 표시
+
+### 내 페이지 (My Page)
+- 사용자별 커스터마이즈 가능한 위젯 대시보드
+- 6종 위젯: 내 이슈, 감시 이슈, 기한 초과, 최근 활동, 시간 기록, 캘린더
+- 2컬럼 레이아웃, 위젯 추가/제거/컬럼 배치
+
+### 보고서
+- **시간 보고서** - 기간별/사용자별/프로젝트별 시간 집계 + CSV 다운로드
+
+### 실시간 협업
+- **SignalR WebSocket** 기반 실시간 통신
+- 이슈 변경 시 프로젝트 멤버에게 토스트 알림
+- 이슈 동시 편집 감지 및 경고
+- 현재 이슈 조회 중인 사용자 표시
 
 ### 관리자
 - 사용자, 역할, 트래커, 상태, 우선순위 관리
-- 커스텀 필드 정의 (타입, 대상, 필수 여부, 선택 항목)
-- 워크플로우 전이 규칙 설정
+- **세밀한 권한 관리** - 37개 권한, 8개 그룹, 체크박스 매트릭스
+- **사용자 그룹** - 그룹 단위 멤버 관리
+- 커스텀 필드, 워크플로우, 이슈 템플릿 설정
+- **시스템 설정** - 앱 이름, 세션 타임아웃, 회원가입 제어
+- **테마 커스터마이징** - 색상, 로고, 파비콘 업로드
+- **회원가입 제어** - 자유가입/관리자 승인/가입 비활성화
+
+### 인증
+- JWT + Refresh Token rotation
+- **Google OAuth 로그인** - 자동 계정 생성/연동
+- 회원가입 모드 관리자 설정
 
 ### 기타
-- **글로벌 검색** - 이슈, 위키 통합 검색
+- **다국어 (i18n)** - 한국어/영어 전환
 - **다크 모드** - 라이트/다크 테마 전환
-- **XSS 보호** - 서버(HtmlSanitizer) + 클라이언트(DOMPurify) 이중 방어
+- **글로벌 검색** - 이슈, 위키 통합 검색
+- **XSS 보호** - 서버(HtmlSanitizer) + 클라이언트(DOMPurify)
 - **입력 검증** - FluentValidation 전체 DTO 적용
 
 ## 시작하기
@@ -88,6 +125,13 @@ npm run dev
 |--------|----------|------|
 | admin | admin | 관리자 |
 
+### Google OAuth 설정 (선택)
+
+```bash
+# frontend/.env
+VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+```
+
 ## 테스트
 
 ```bash
@@ -104,17 +148,30 @@ cd frontend && npm test
 Nexmine/
 ├── backend/
 │   ├── src/
-│   │   ├── Nexmine.Api/            # 컨트롤러, 미들웨어
+│   │   ├── Nexmine.Api/            # 컨트롤러, 미들웨어, SignalR Hub
 │   │   ├── Nexmine.Application/    # DTO, 서비스 인터페이스, 검증
 │   │   │   └── Features/
-│   │   │       ├── Auth/           # 인증/인가
-│   │   │       ├── Projects/       # 프로젝트
+│   │   │       ├── Auth/           # 인증/인가 (JWT + Google OAuth)
+│   │   │       ├── Projects/       # 프로젝트, 모듈 관리
 │   │   │       ├── Issues/         # 이슈, 버전, 카테고리, 시간기록
 │   │   │       ├── CustomFields/   # 커스텀 필드
 │   │   │       ├── Workflows/      # 워크플로우 전이 규칙
 │   │   │       ├── Activities/     # 활동 피드
 │   │   │       ├── Wiki/           # 위키
-│   │   │       ├── Documents/      # 문서
+│   │   │       ├── Documents/      # 문서, 첨부파일
+│   │   │       ├── Forums/         # 게시판
+│   │   │       ├── News/           # 뉴스
+│   │   │       ├── IssueTemplates/ # 이슈 템플릿
+│   │   │       ├── Watchers/       # 감시자
+│   │   │       ├── SavedQueries/   # 저장된 필터
+│   │   │       ├── Groups/         # 사용자 그룹
+│   │   │       ├── Permissions/    # 권한 상수
+│   │   │       ├── Settings/       # 시스템 설정
+│   │   │       ├── Roadmap/        # 로드맵
+│   │   │       ├── Reports/        # 보고서
+│   │   │       ├── Export/         # CSV/PDF 내보내기
+│   │   │       ├── MyPage/         # 내 페이지
+│   │   │       ├── Realtime/       # 실시간 알림
 │   │   │       ├── Dashboard/      # 대시보드
 │   │   │       ├── Search/         # 검색
 │   │   │       └── Admin/          # 관리자
@@ -127,7 +184,7 @@ Nexmine/
 │       ├── api/generated/          # Orval 자동 생성 (수정 금지)
 │       ├── components/             # 공통 컴포넌트, 레이아웃
 │       ├── features/               # 기능별 모듈
-│       │   ├── auth/               # 로그인, 회원가입
+│       │   ├── auth/               # 로그인, 회원가입, Google OAuth
 │       │   ├── projects/           # 프로젝트
 │       │   ├── issues/             # 이슈
 │       │   ├── kanban/             # 칸반 보드
@@ -135,11 +192,19 @@ Nexmine/
 │       │   ├── calendar/           # 캘린더
 │       │   ├── wiki/               # 위키
 │       │   ├── documents/          # 문서
-│       │   ├── dashboard/          # 대시보드
+│       │   ├── forums/             # 게시판
+│       │   ├── news/               # 뉴스
+│       │   ├── roadmap/            # 로드맵
 │       │   ├── activity/           # 활동 피드
+│       │   ├── mypage/             # 내 페이지
+│       │   ├── reports/            # 시간 보고서
+│       │   ├── dashboard/          # 대시보드
 │       │   ├── search/             # 검색
 │       │   └── admin/              # 관리자
+│       ├── hooks/                  # SignalR 등 커스텀 훅
+│       ├── i18n/                   # 다국어 번역 파일
 │       ├── stores/                 # Zustand 스토어
+│       ├── theme/                  # MUI 테마 설정
 │       └── __tests__/              # 프론트엔드 테스트
 └── claudeDoc/                      # 개발 규칙 문서
 ```
