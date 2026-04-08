@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Button, TextField, Card, CardContent, CardActions,
   Dialog, DialogTitle, DialogContent, DialogActions, Alert, Skeleton,
-  Chip, IconButton, Collapse, Divider,
+  Chip, IconButton, Collapse, Divider, Breadcrumbs, Link,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -32,9 +32,23 @@ function formatDateTime(dateStr?: string): string {
   });
 }
 
+function fetchProject(identifier: string) {
+  return axiosInstance
+    .get<{ id?: number; name?: string | null; identifier?: string | null }>(`/Projects/${identifier}`)
+    .then((res) => res.data);
+}
+
 export default function NewsPage() {
   const { identifier } = useParams<{ identifier: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const projectQuery = useQuery({
+    queryKey: ['project', identifier],
+    queryFn: () => fetchProject(identifier!),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editNews, setEditNews] = useState<NewsDto | null>(null);
@@ -126,6 +140,26 @@ export default function NewsPage() {
 
   return (
     <Box>
+      <Breadcrumbs sx={{ mb: 1 }}>
+        <Link
+          component="button"
+          underline="hover"
+          color="inherit"
+          onClick={() => navigate('/projects')}
+        >
+          프로젝트
+        </Link>
+        <Link
+          component="button"
+          underline="hover"
+          color="inherit"
+          onClick={() => navigate(`/projects/${identifier}`)}
+        >
+          {projectQuery.data?.name ?? identifier}
+        </Link>
+        <Typography color="text.primary">뉴스</Typography>
+      </Breadcrumbs>
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
         <Typography variant="h5">뉴스</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>

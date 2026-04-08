@@ -26,10 +26,23 @@ function fetchRoadmap(identifier: string) {
     .then((res) => res.data);
 }
 
+function fetchProject(identifier: string) {
+  return axiosInstance
+    .get<{ id?: number; name?: string | null; identifier?: string | null }>(`/Projects/${identifier}`)
+    .then((res) => res.data);
+}
+
 export default function RoadmapPage() {
   const { identifier } = useParams<{ identifier: string }>();
   const navigate = useNavigate();
   const [expandedVersions, setExpandedVersions] = useState<Set<number>>(new Set());
+
+  const projectQuery = useQuery({
+    queryKey: ['project', identifier],
+    queryFn: () => fetchProject(identifier!),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: versions, isLoading, isError, refetch } = useQuery({
     queryKey: ['roadmap', identifier],
@@ -77,7 +90,7 @@ export default function RoadmapPage() {
             onClick={() => navigate(`/projects/${identifier}`)}
             sx={{ cursor: 'pointer' }}
           >
-            {identifier}
+            {projectQuery.data?.name ?? identifier}
           </Link>
           <Typography color="text.primary">로드맵</Typography>
         </Breadcrumbs>

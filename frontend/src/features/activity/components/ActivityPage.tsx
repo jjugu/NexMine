@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Paper, Skeleton, TablePagination,
   ToggleButton, ToggleButtonGroup, Alert, Avatar,
-  useMediaQuery, useTheme,
+  useMediaQuery, useTheme, Breadcrumbs, Link,
 } from '@mui/material';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import EditIcon from '@mui/icons-material/Edit';
@@ -129,12 +129,25 @@ function getApiTypeParam(filter: FilterType): string | undefined {
   return filter;
 }
 
+function fetchProject(identifier: string) {
+  return axiosInstance
+    .get<{ id?: number; name?: string | null; identifier?: string | null }>(`/Projects/${identifier}`)
+    .then((res) => res.data);
+}
+
 export default function ActivityPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const { identifier } = useParams<{ identifier?: string }>();
   const isProjectScope = !!identifier;
+
+  const projectQuery = useQuery({
+    queryKey: ['project', identifier],
+    queryFn: () => fetchProject(identifier!),
+    enabled: isProjectScope && !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [page, setPage] = useState(1);
@@ -206,6 +219,28 @@ export default function ActivityPage() {
 
   return (
     <Box>
+      {isProjectScope && (
+        <Breadcrumbs sx={{ mb: 1 }}>
+          <Link
+            component="button"
+            underline="hover"
+            color="inherit"
+            onClick={() => navigate('/projects')}
+          >
+            프로젝트
+          </Link>
+          <Link
+            component="button"
+            underline="hover"
+            color="inherit"
+            onClick={() => navigate(`/projects/${identifier}`)}
+          >
+            {projectQuery.data?.name ?? identifier}
+          </Link>
+          <Typography color="text.primary">활동</Typography>
+        </Breadcrumbs>
+      )}
+
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
         <Typography variant="h5">
           {isProjectScope ? '프로젝트 활동' : '활동'}

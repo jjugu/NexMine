@@ -86,11 +86,24 @@ type ViewState =
 
 // ---------- ForumPage ----------
 
+function fetchProject(identifier: string) {
+  return axiosInstance
+    .get<{ id?: number; name?: string | null; identifier?: string | null }>(`/Projects/${identifier}`)
+    .then((res) => res.data);
+}
+
 export default function ForumPage() {
   const { identifier } = useParams<{ identifier: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+
+  const projectQuery = useQuery({
+    queryKey: ['project', identifier],
+    queryFn: () => fetchProject(identifier!),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const [view, setView] = useState<ViewState>({ type: 'forum-list' });
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -282,7 +295,7 @@ export default function ForumPage() {
           onClick={() => navigate(`/projects/${identifier}`)}
           sx={{ cursor: 'pointer' }}
         >
-          {identifier}
+          {projectQuery.data?.name ?? identifier}
         </Link>
         {view.type === 'forum-list' ? (
           <Typography color="text.primary">게시판</Typography>

@@ -110,10 +110,23 @@ function ToolbarButton({ icon, label, onClick, isActive, disabled }: ToolbarButt
   );
 }
 
+function fetchProject(identifier: string) {
+  return axiosInstance
+    .get<{ id?: number; name?: string | null; identifier?: string | null }>(`/Projects/${identifier}`)
+    .then((res) => res.data);
+}
+
 export default function WikiPageEditor() {
   const { identifier, slug } = useParams<{ identifier: string; slug?: string }>();
   const navigate = useNavigate();
   const isEditMode = Boolean(slug);
+
+  const projectQuery = useQuery({
+    queryKey: ['project', identifier],
+    queryFn: () => fetchProject(identifier!),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const [title, setTitle] = useState('');
   const [parentPageId, setParentPageId] = useState<string>('');
@@ -240,9 +253,17 @@ export default function WikiPageEditor() {
           component="button"
           underline="hover"
           color="inherit"
+          onClick={() => navigate('/projects')}
+        >
+          프로젝트
+        </Link>
+        <Link
+          component="button"
+          underline="hover"
+          color="inherit"
           onClick={() => navigate(`/projects/${identifier}`)}
         >
-          {identifier}
+          {projectQuery.data?.name ?? identifier}
         </Link>
         <Link
           component="button"
@@ -253,7 +274,7 @@ export default function WikiPageEditor() {
           위키
         </Link>
         <Typography color="text.primary">
-          {isEditMode ? '수정' : '새 페이지'}
+          {isEditMode ? '위키 편집' : '새 페이지'}
         </Typography>
       </Breadcrumbs>
 

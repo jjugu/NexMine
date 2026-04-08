@@ -112,6 +112,12 @@ function TreeItem({ node, level, selectedSlug, onSelect }: TreeItemProps) {
   );
 }
 
+function fetchProject(identifier: string) {
+  return axiosInstance
+    .get<{ id?: number; name?: string | null; identifier?: string | null }>(`/Projects/${identifier}`)
+    .then((res) => res.data);
+}
+
 export default function WikiIndexPage() {
   const { identifier, slug } = useParams<{ identifier: string; slug?: string }>();
   const navigate = useNavigate();
@@ -119,6 +125,13 @@ export default function WikiIndexPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const projectQuery = useQuery({
+    queryKey: ['project', identifier],
+    queryFn: () => fetchProject(identifier!),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const showHistory = (location.state as { showHistory?: boolean } | null)?.showHistory === true;
 
@@ -206,9 +219,17 @@ export default function WikiIndexPage() {
             component="button"
             underline="hover"
             color="inherit"
+            onClick={() => navigate('/projects')}
+          >
+            프로젝트
+          </Link>
+          <Link
+            component="button"
+            underline="hover"
+            color="inherit"
             onClick={() => navigate(`/projects/${identifier}`)}
           >
-            {identifier}
+            {projectQuery.data?.name ?? identifier}
           </Link>
           <Typography color="text.primary">위키</Typography>
         </Breadcrumbs>

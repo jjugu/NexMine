@@ -23,6 +23,12 @@ interface DocumentItem {
   createdAt: string;
 }
 
+function fetchProject(identifier: string) {
+  return axiosInstance
+    .get<{ id?: number; name?: string | null; identifier?: string | null }>(`/Projects/${identifier}`)
+    .then((res) => res.data);
+}
+
 export default function DocumentListPage() {
   const { identifier } = useParams<{ identifier: string }>();
   const navigate = useNavigate();
@@ -31,6 +37,13 @@ export default function DocumentListPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
+
+  const projectQuery = useQuery({
+    queryKey: ['project', identifier],
+    queryFn: () => fetchProject(identifier!),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const documentsQuery = useQuery({
     queryKey: ['documents', identifier],
@@ -74,9 +87,17 @@ export default function DocumentListPage() {
             component="button"
             underline="hover"
             color="inherit"
+            onClick={() => navigate('/projects')}
+          >
+            프로젝트
+          </Link>
+          <Link
+            component="button"
+            underline="hover"
+            color="inherit"
             onClick={() => navigate(`/projects/${identifier}`)}
           >
-            {identifier}
+            {projectQuery.data?.name ?? identifier}
           </Link>
           <Typography color="text.primary">문서</Typography>
         </Breadcrumbs>

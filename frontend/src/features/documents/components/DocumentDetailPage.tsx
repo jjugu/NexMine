@@ -45,6 +45,12 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function fetchProject(identifier: string) {
+  return axiosInstance
+    .get<{ id?: number; name?: string | null; identifier?: string | null }>(`/Projects/${identifier}`)
+    .then((res) => res.data);
+}
+
 export default function DocumentDetailPage() {
   const { identifier, id } = useParams<{ identifier: string; id: string }>();
   const navigate = useNavigate();
@@ -62,6 +68,13 @@ export default function DocumentDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [uploadFiles, setUploadFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
+
+  const projectQuery = useQuery({
+    queryKey: ['project', identifier],
+    queryFn: () => fetchProject(identifier!),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const docQuery = useQuery({
     queryKey: ['document', id],
@@ -198,9 +211,17 @@ export default function DocumentDetailPage() {
           component="button"
           underline="hover"
           color="inherit"
+          onClick={() => navigate('/projects')}
+        >
+          프로젝트
+        </Link>
+        <Link
+          component="button"
+          underline="hover"
+          color="inherit"
           onClick={() => navigate(`/projects/${identifier}`)}
         >
-          {identifier}
+          {projectQuery.data?.name ?? identifier}
         </Link>
         <Link
           component="button"

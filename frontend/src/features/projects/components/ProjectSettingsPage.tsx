@@ -873,6 +873,13 @@ export default function ProjectSettingsPage() {
   const { identifier } = useParams<{ identifier: string }>();
   const navigate = useNavigate();
 
+  const projectQuery = useQuery({
+    queryKey: ['project', identifier],
+    queryFn: () => fetchProject(identifier!),
+    enabled: !!identifier,
+    staleTime: 5 * 60 * 1000,
+  });
+
   if (!identifier) {
     return (
       <Box>
@@ -889,7 +896,6 @@ export default function ProjectSettingsPage() {
           underline="hover"
           color="inherit"
           onClick={() => navigate('/projects')}
-          sx={{ cursor: 'pointer' }}
         >
           프로젝트
         </Link>
@@ -898,9 +904,8 @@ export default function ProjectSettingsPage() {
           underline="hover"
           color="inherit"
           onClick={() => navigate(`/projects/${identifier}`)}
-          sx={{ cursor: 'pointer' }}
         >
-          {identifier}
+          {projectQuery.data?.name ?? identifier}
         </Link>
         <Typography color="text.primary">설정</Typography>
       </Breadcrumbs>
