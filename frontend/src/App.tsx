@@ -13,7 +13,7 @@ import { useThemeStore } from './stores/themeStore';
 import axiosInstance from './api/axiosInstance';
 import type { AppSettingsResponse } from './api/generated/model';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+// Google Client ID: prefer env var, fallback to DB setting loaded in AppContent
 import AuthLayout from './components/layout/AuthLayout';
 import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
@@ -141,7 +141,10 @@ function AppContent() {
     }
   }, [appSettings?.faviconUrl]);
 
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || appSettings?.googleClientId || '';
+
   return (
+    <GoogleOAuthProvider clientId={googleClientId}>
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ko">
@@ -215,15 +218,14 @@ function AppContent() {
       </BrowserRouter>
       </LocalizationProvider>
     </ThemeProvider>
+    </GoogleOAuthProvider>
   );
 }
 
 export default function App() {
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <QueryClientProvider client={queryClient}>
-        <AppContent />
-      </QueryClientProvider>
-    </GoogleOAuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
   );
 }

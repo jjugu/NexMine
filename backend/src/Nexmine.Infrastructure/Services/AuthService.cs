@@ -154,8 +154,9 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> GoogleLoginAsync(GoogleLoginRequest request, string? ipAddress)
     {
-        var googleClientId = _configuration["Google:ClientId"]
-            ?? throw new InvalidOperationException("Google ClientId is not configured.");
+        var googleClientId = await _systemSettingService.GetAsync("google_client_id")
+            ?? _configuration["Google:ClientId"]
+            ?? throw new InvalidOperationException("Google Client ID가 설정되지 않았습니다. 관리자 설정에서 입력해주세요.");
 
         GoogleJsonWebSignature.Payload payload;
         try

@@ -42,7 +42,8 @@ public class SettingsController : ControllerBase
             PrimaryColor = await _systemSettingService.GetAsync("primary_color") ?? "#1976d2",
             LogoUrl = await _systemSettingService.GetAsync("logo_url"),
             FaviconUrl = await _systemSettingService.GetAsync("favicon_url"),
-            DefaultLanguage = await _systemSettingService.GetAsync("default_language") ?? "ko"
+            DefaultLanguage = await _systemSettingService.GetAsync("default_language") ?? "ko",
+            GoogleClientId = await _systemSettingService.GetAsync("google_client_id")
         };
 
         return Ok(response);

@@ -36,6 +36,7 @@ export default function AdminSettingsPage() {
   const [appName, setAppName] = useState('');
   const [appDescription, setAppDescription] = useState('');
   const [sessionTimeout, setSessionTimeout] = useState('');
+  const [googleClientId, setGoogleClientId] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#1976d2');
   const [customColor, setCustomColor] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
@@ -62,6 +63,7 @@ export default function AdminSettingsPage() {
       setPrimaryColor(settings.primary_color || '#1976d2');
       setLogoUrl(settings.logo_url ?? '');
       setFaviconUrl(settings.favicon_url ?? '');
+      setGoogleClientId(settings.google_client_id ?? '');
     }
   }, [settings]);
 
@@ -87,6 +89,7 @@ export default function AdminSettingsPage() {
       await axiosInstance.put('/admin/settings', { key: 'app_name', value: appName });
       await axiosInstance.put('/admin/settings', { key: 'app_description', value: appDescription });
       await axiosInstance.put('/admin/settings', { key: 'session_timeout_minutes', value: sessionTimeout });
+      await axiosInstance.put('/admin/settings', { key: 'google_client_id', value: googleClientId });
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
       queryClient.invalidateQueries({ queryKey: ['app-settings'] });
       setSnackbar({ open: true, message: '설정이 저장되었습니다.', severity: 'success' });
@@ -219,6 +222,16 @@ export default function AdminSettingsPage() {
               placeholder="30"
               slotProps={{ htmlInput: { min: 1 } }}
               sx={{ maxWidth: 280 }}
+            />
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              label="Google OAuth Client ID"
+              value={googleClientId}
+              onChange={(e) => setGoogleClientId(e.target.value)}
+              placeholder="xxxxx.apps.googleusercontent.com"
+              fullWidth
+              helperText="Google Cloud Console에서 발급받은 OAuth 2.0 클라이언트 ID"
             />
           </Box>
           <Box sx={{ mt: 3 }}>
