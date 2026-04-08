@@ -17,6 +17,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -32,6 +33,7 @@ import type {
   AllowedStatusDto, WatcherDto, ProjectMemberDto,
 } from '../../../api/generated/model';
 import CopyIssueDialog from './CopyIssueDialog';
+import MoveIssueDialog from './MoveIssueDialog';
 import {
   useTrackers, useIssueStatuses, useIssuePriorities,
   useCategories, useVersions, useProjectMembers,
@@ -668,6 +670,7 @@ export default function IssueDetailPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isCopyOpen, setIsCopyOpen] = useState(false);
+  const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [editCustomValues, setEditCustomValues] = useState<Record<number, string>>({});
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -1085,6 +1088,11 @@ export default function IssueDetailPage() {
               <Tooltip title="복사">
                 <IconButton onClick={() => setIsCopyOpen(true)}>
                   <ContentCopyIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="이동">
+                <IconButton onClick={() => setIsMoveOpen(true)}>
+                  <DriveFileMoveIcon />
                 </IconButton>
               </Tooltip>
               <Button variant="outlined" startIcon={<EditIcon />} onClick={handleEdit}>
@@ -1528,6 +1536,16 @@ export default function IssueDetailPage() {
       <CopyIssueDialog
         open={isCopyOpen}
         onClose={() => setIsCopyOpen(false)}
+        issueId={issueId}
+        currentProjectId={issue.projectId ?? 0}
+        currentProjectIdentifier={identifier ?? ''}
+        onSuccess={(message) => setSnackbar({ open: true, message, severity: 'success' })}
+      />
+
+      {/* Move issue dialog */}
+      <MoveIssueDialog
+        open={isMoveOpen}
+        onClose={() => setIsMoveOpen(false)}
         issueId={issueId}
         currentProjectId={issue.projectId ?? 0}
         currentProjectIdentifier={identifier ?? ''}

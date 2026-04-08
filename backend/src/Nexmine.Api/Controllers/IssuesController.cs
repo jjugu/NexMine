@@ -124,6 +124,39 @@ public class IssuesController : ControllerBase
         return CreatedAtAction("GetById", "Issues", new { id = copy.Id }, copy);
     }
 
+    [HttpPut("{id:int}/move")]
+    [ProducesResponseType(typeof(IssueDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> MoveIssueAsync(int id, [FromBody] MoveIssueRequest request)
+    {
+        var userId = User.GetUserId();
+        var issue = await _issueService.MoveIssueAsync(id, request, userId);
+        return Ok(issue);
+    }
+
+    [HttpPost("/api/projects/{identifier}/issues/import")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ImportIssuesResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ImportIssuesAsync(string identifier, IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "잘못된 요청",
+                Detail = "CSV 파일을 선택해주세요."
+            });
+        }
+
+        var userId = User.GetUserId();
+        using var stream = file.OpenReadStream();
+        var result = await _issueService.ImportFromCsvAsync(identifier, stream, userId);
+        return Ok(result);
+    }
+
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

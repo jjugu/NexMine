@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -10,20 +10,31 @@ import {
   Breadcrumbs, Link, Collapse, LinearProgress, TableSortLabel,
   CircularProgress, Tooltip, Checkbox, Snackbar, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Switch,
+  Menu, ListItemIcon, ListItemText, Divider, Popover,
+  List, ListItem, ListItemButton,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DownloadIcon from '@mui/icons-material/Download';
+import UploadIcon from '@mui/icons-material/Upload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import CloseIcon from '@mui/icons-material/Close';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import EditIcon from '@mui/icons-material/Edit';
+import PersonIcon from '@mui/icons-material/Person';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ArrowRightIcon from '@mui/icons-material/ArrowRight';
+import RestoreIcon from '@mui/icons-material/Restore';
 import { QueryState, TableSkeleton, CardSkeleton } from '../../../components/common/QueryState';
 import axiosInstance from '../../../api/axiosInstance';
-import type { IssueDtoPagedResult, ProjectDto, BulkUpdateIssuesRequest, SavedQueryDto } from '../../../api/generated/model';
+import type { IssueDtoPagedResult, IssueDto, ProjectDto, BulkUpdateIssuesRequest, SavedQueryDto } from '../../../api/generated/model';
 import { useAuthStore } from '../../../stores/authStore';
 import {
   useTrackers,
@@ -32,7 +43,144 @@ import {
   useProjectMembers,
 } from '../hooks/useReferenceData';
 import { formatDate, getPriorityColor } from '../utils/issueUtils';
+import ImportIssuesDialog from './ImportIssuesDialog';
+import CopyIssueDialog from './CopyIssueDialog';
 
+// --- Column customization types ---
+
+interface ColumnDef {
+  key: string;
+  label: string;
+  sortField?: string;
+  minWidth?: number;
+  alwaysVisible?: boolean;
+}
+
+const ALL_COLUMNS: ColumnDef[] = [
+  { key: 'id', label: '#', sortField: 'id', minWidth: 60, alwaysVisible: true },
+  { key: 'subject', label: '제목', sortField: 'subject', minWidth: 200, alwaysVisible: true },
+  { key: 'tracker', label: '트래커', sortField: 'trackerName', minWidth: 80 },
+  { key: 'status', label: '상태', sortField: 'statusName', minWidth: 80 },
+  { key: 'priority', label: '우선순위', sortField: 'priorityName', minWidth: 80 },
+  { key: 'assignee', label: '담당자', sortField: 'assignedToName', minWidth: 100 },
+  { key: 'author', label: '작성자', minWidth: 100 },
+  { key: 'startDate', label: '시작일', minWidth: 100 },
+  { key: 'dueDate', label: '기한', minWidth: 100 },
+  { key: 'doneRatio', label: '진행률', sortField: 'doneRatio', minWidth: 80 },
+  { key: 'estimatedHours', label: '예상시간', minWidth: 80 },
+  { key: 'createdAt', label: '생성일', minWidth: 100 },
+  { key: 'updatedAt', label: '갱신일', sortField: 'updatedAt', minWidth: 100 },
+];
+
+const DEFAULT_COLUMNS = ['id', 'subject', 'tracker', 'status', 'priority', 'assignee', 'dueDate', 'doneRatio'];
+const STORAGE_KEY = 'nexmine-issue-columns';
+
+function loadColumns(): string[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as string[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Ensure alwaysVisible columns are included
+        const alwaysKeys = ALL_COLUMNS.filter((c) => c.alwaysVisible).map((c) => c.key);
+        const merged = [...new Set([...alwaysKeys, ...parsed])];
+        return merged;
+      }
+    }
+  } catch {
+    // ignore parse error
+  }
+  return DEFAULT_COLUMNS;
+}
+
+function renderCell(issue: IssueDto, columnKey: string): React.ReactNode {
+  switch (columnKey) {
+    case 'id':
+      return (
+        <Typography variant="body2" color="text.secondary">
+          #{issue.id}
+        </Typography>
+      );
+    case 'subject':
+      return (
+        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+          {issue.subject}
+        </Typography>
+      );
+    case 'tracker':
+      return <Chip label={issue.trackerName ?? '-'} size="small" variant="outlined" />;
+    case 'status':
+      return <Chip label={issue.statusName ?? '-'} size="small" color="success" variant="outlined" />;
+    case 'priority':
+      return (
+        <Chip
+          label={issue.priorityName ?? '-'}
+          size="small"
+          color={getPriorityColor(issue.priorityName)}
+          variant="outlined"
+        />
+      );
+    case 'assignee':
+      return (
+        <Typography variant="body2" color="text.secondary">
+          {issue.assignedToName ?? '-'}
+        </Typography>
+      );
+    case 'author':
+      return (
+        <Typography variant="body2" color="text.secondary">
+          {issue.authorName ?? '-'}
+        </Typography>
+      );
+    case 'startDate':
+      return (
+        <Typography variant="body2" color="text.secondary">
+          {formatDate(issue.startDate)}
+        </Typography>
+      );
+    case 'dueDate':
+      return (
+        <Typography variant="body2" color="text.secondary">
+          {formatDate(issue.dueDate)}
+        </Typography>
+      );
+    case 'doneRatio':
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 80 }}>
+          <LinearProgress
+            variant="determinate"
+            value={issue.doneRatio ?? 0}
+            sx={{ flex: 1, height: 6, borderRadius: 3 }}
+          />
+          <Typography variant="caption" color="text.secondary">
+            {issue.doneRatio ?? 0}%
+          </Typography>
+        </Box>
+      );
+    case 'estimatedHours':
+      return (
+        <Typography variant="body2" color="text.secondary">
+          {issue.estimatedHours != null ? `${issue.estimatedHours}h` : '-'}
+        </Typography>
+      );
+    case 'createdAt':
+      return (
+        <Typography variant="body2" color="text.secondary">
+          {formatDate(issue.createdAt)}
+        </Typography>
+      );
+    case 'updatedAt':
+      return (
+        <Typography variant="body2" color="text.secondary">
+          {formatDate(issue.updatedAt)}
+        </Typography>
+      );
+    default:
+      return '-';
+  }
+}
+
+// --- Sort field type ---
 type SortField = 'id' | 'subject' | 'trackerName' | 'statusName' | 'priorityName' | 'assignedToName' | 'doneRatio' | 'updatedAt';
 
 function fetchIssues(
@@ -70,6 +218,26 @@ export default function IssueListPage() {
     severity: 'success',
   });
 
+  // Column customization state
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(loadColumns);
+  const [columnAnchorEl, setColumnAnchorEl] = useState<HTMLElement | null>(null);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    mouseX: number;
+    mouseY: number;
+    issue: IssueDto;
+  } | null>(null);
+  const [statusSubMenuAnchor, setStatusSubMenuAnchor] = useState<HTMLElement | null>(null);
+  const [assigneeSubMenuAnchor, setAssigneeSubMenuAnchor] = useState<HTMLElement | null>(null);
+  const [prioritySubMenuAnchor, setPrioritySubMenuAnchor] = useState<HTMLElement | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetIssue, setDeleteTargetIssue] = useState<IssueDto | null>(null);
+
+  // Copy issue dialog state
+  const [copyIssueOpen, setCopyIssueOpen] = useState(false);
+  const [copyTargetIssue, setCopyTargetIssue] = useState<IssueDto | null>(null);
+
   // URL params
   const page = parseInt(searchParams.get('page') ?? '1', 10);
   const pageSize = parseInt(searchParams.get('pageSize') ?? '25', 10);
@@ -84,6 +252,7 @@ export default function IssueListPage() {
   const [searchInput, setSearchInput] = useState(searchFromUrl);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Saved filter state
   const [saveFilterOpen, setSaveFilterOpen] = useState(false);
@@ -106,6 +275,33 @@ export default function IssueListPage() {
     },
     onError: () => {
       setSnackbar({ open: true, message: '일괄 업데이트에 실패했습니다.', severity: 'error' });
+    },
+  });
+
+  // Context menu: update issue mutation
+  const updateIssueMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Record<string, unknown> }) =>
+      axiosInstance.put(`/Issues/${id}`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      setSnackbar({ open: true, message: '이슈가 업데이트되었습니다.', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: '이슈 업데이트에 실패했습니다.', severity: 'error' });
+    },
+  });
+
+  // Context menu: delete issue mutation
+  const deleteIssueMutation = useMutation({
+    mutationFn: (id: number) => axiosInstance.delete(`/Issues/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      setDeleteConfirmOpen(false);
+      setDeleteTargetIssue(null);
+      setSnackbar({ open: true, message: '이슈가 삭제되었습니다.', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: '이슈 삭제에 실패했습니다.', severity: 'error' });
     },
   });
 
@@ -234,12 +430,16 @@ export default function IssueListPage() {
     setSearchParams(newParams, { replace: true });
   }
 
-  function handleSort(field: SortField) {
+  function handleSort(field: string) {
+    const colDef = ALL_COLUMNS.find((c) => c.key === field);
+    const sortField = colDef?.sortField;
+    if (!sortField) return;
+
     const newParams = new URLSearchParams(searchParams);
-    if (sortBy === field) {
+    if (sortBy === sortField) {
       newParams.set('sortDesc', String(!sortDesc));
     } else {
-      newParams.set('sortBy', field);
+      newParams.set('sortBy', sortField);
       newParams.set('sortDesc', 'true');
     }
     newParams.set('page', '1');
@@ -379,18 +579,92 @@ export default function IssueListPage() {
     }
   }, [identifier, searchFromUrl, trackerIdFilter, statusIdFilter, priorityIdFilter, assignedToIdFilter]);
 
+  // --- Column customization handlers ---
+  function handleToggleColumn(key: string) {
+    const colDef = ALL_COLUMNS.find((c) => c.key === key);
+    if (colDef?.alwaysVisible) return;
+
+    setSelectedColumns((prev) => {
+      const next = prev.includes(key)
+        ? prev.filter((k) => k !== key)
+        : [...prev, key];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function handleResetColumns() {
+    setSelectedColumns(DEFAULT_COLUMNS);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_COLUMNS));
+  }
+
+  const visibleColumns = useMemo(
+    () => ALL_COLUMNS.filter((c) => selectedColumns.includes(c.key)),
+    [selectedColumns],
+  );
+
   const sortDirection = sortDesc ? 'desc' : 'asc';
 
-  const columns: Array<{ field: SortField; label: string; minWidth?: number }> = [
-    { field: 'id', label: '#', minWidth: 60 },
-    { field: 'subject', label: '제목', minWidth: 200 },
-    { field: 'trackerName', label: '트래커', minWidth: 80 },
-    { field: 'statusName', label: '상태', minWidth: 80 },
-    { field: 'priorityName', label: '우선순위', minWidth: 80 },
-    { field: 'assignedToName', label: '담당자', minWidth: 100 },
-    { field: 'doneRatio', label: '진행률', minWidth: 80 },
-    { field: 'updatedAt', label: '갱신일', minWidth: 100 },
-  ];
+  // --- Context menu handlers ---
+  function handleContextMenu(event: React.MouseEvent, issue: IssueDto) {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenu({ mouseX: event.clientX, mouseY: event.clientY, issue });
+  }
+
+  function handleCloseContextMenu() {
+    setContextMenu(null);
+    setStatusSubMenuAnchor(null);
+    setAssigneeSubMenuAnchor(null);
+    setPrioritySubMenuAnchor(null);
+  }
+
+  function handleContextMenuAction(action: string) {
+    if (!contextMenu) return;
+    const issue = contextMenu.issue;
+
+    switch (action) {
+      case 'view':
+        handleCloseContextMenu();
+        handleRowClick(issue.id);
+        break;
+      case 'copy':
+        handleCloseContextMenu();
+        setCopyTargetIssue(issue);
+        setCopyIssueOpen(true);
+        break;
+      case 'delete':
+        handleCloseContextMenu();
+        setDeleteTargetIssue(issue);
+        setDeleteConfirmOpen(true);
+        break;
+      default:
+        break;
+    }
+  }
+
+  function handleStatusChange(statusId: number) {
+    if (!contextMenu?.issue?.id) return;
+    updateIssueMutation.mutate({ id: contextMenu.issue.id, payload: { statusId } });
+    handleCloseContextMenu();
+  }
+
+  function handleAssigneeChange(assignedToId: number | null) {
+    if (!contextMenu?.issue?.id) return;
+    updateIssueMutation.mutate({ id: contextMenu.issue.id, payload: { assignedToId } });
+    handleCloseContextMenu();
+  }
+
+  function handlePriorityChange(priorityId: number) {
+    if (!contextMenu?.issue?.id) return;
+    updateIssueMutation.mutate({ id: contextMenu.issue.id, payload: { priorityId } });
+    handleCloseContextMenu();
+  }
+
+  function handleDeleteConfirm() {
+    if (!deleteTargetIssue?.id) return;
+    deleteIssueMutation.mutate(deleteTargetIssue.id);
+  }
 
   return (
     <Box>
@@ -420,6 +694,11 @@ export default function IssueListPage() {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
           <Typography variant="h5">이슈</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
+            <Tooltip title="CSV 가져오기">
+              <IconButton onClick={() => setIsImportOpen(true)}>
+                <UploadIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="CSV 내보내기">
               <span>
                 <IconButton
@@ -447,6 +726,13 @@ export default function IssueListPage() {
                 <BookmarkBorderIcon />
               </IconButton>
             </Tooltip>
+            {!isMobile && (
+              <Tooltip title="컬럼 설정">
+                <IconButton onClick={(e) => setColumnAnchorEl(e.currentTarget)}>
+                  <ViewColumnIcon />
+                </IconButton>
+              </Tooltip>
+            )}
             <IconButton
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               color={isFilterOpen ? 'primary' : 'default'}
@@ -459,6 +745,49 @@ export default function IssueListPage() {
           </Box>
         </Box>
       </Box>
+
+      {/* Column settings popover */}
+      <Popover
+        open={Boolean(columnAnchorEl)}
+        anchorEl={columnAnchorEl}
+        onClose={() => setColumnAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Box sx={{ p: 2, minWidth: 220 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>표시할 컬럼</Typography>
+          <List dense disablePadding>
+            {ALL_COLUMNS.map((col) => (
+              <ListItem key={col.key} disablePadding>
+                <ListItemButton
+                  onClick={() => handleToggleColumn(col.key)}
+                  disabled={col.alwaysVisible}
+                  dense
+                >
+                  <Checkbox
+                    edge="start"
+                    checked={selectedColumns.includes(col.key)}
+                    disabled={col.alwaysVisible}
+                    size="small"
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                  <ListItemText primary={col.label} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+          <Button
+            size="small"
+            startIcon={<RestoreIcon />}
+            onClick={handleResetColumns}
+            sx={{ mt: 1 }}
+            fullWidth
+          >
+            기본값 복원
+          </Button>
+        </Box>
+      </Popover>
 
       {/* Saved filters */}
       {savedQueries.length > 0 && (
@@ -648,7 +977,7 @@ export default function IssueListPage() {
         isEmpty={items.length === 0}
         onRetry={() => refetch()}
         errorMessage="이슈 목록을 불러오는데 실패했습니다."
-        skeleton={isMobile ? <CardSkeleton count={5} /> : <TableSkeleton rows={5} columns={8} />}
+        skeleton={isMobile ? <CardSkeleton count={5} /> : <TableSkeleton rows={5} columns={visibleColumns.length + 1} />}
         emptyState={
           <Box
             sx={{
@@ -687,15 +1016,19 @@ export default function IssueListPage() {
                       size="small"
                     />
                   </TableCell>
-                  {columns.map((col) => (
-                    <TableCell key={col.field} sx={{ minWidth: col.minWidth }}>
-                      <TableSortLabel
-                        active={sortBy === col.field}
-                        direction={sortBy === col.field ? sortDirection : 'asc'}
-                        onClick={() => handleSort(col.field)}
-                      >
-                        {col.label}
-                      </TableSortLabel>
+                  {visibleColumns.map((col) => (
+                    <TableCell key={col.key} sx={{ minWidth: col.minWidth }}>
+                      {col.sortField ? (
+                        <TableSortLabel
+                          active={sortBy === col.sortField}
+                          direction={sortBy === col.sortField ? sortDirection : 'asc'}
+                          onClick={() => handleSort(col.key)}
+                        >
+                          {col.label}
+                        </TableSortLabel>
+                      ) : (
+                        col.label
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -708,6 +1041,7 @@ export default function IssueListPage() {
                     selected={issue.id != null && selectedIds.has(issue.id)}
                     sx={{ cursor: 'pointer' }}
                     onClick={() => handleRowClick(issue.id)}
+                    onContextMenu={(e) => handleContextMenu(e, issue)}
                   >
                     <TableCell padding="checkbox">
                       <Checkbox
@@ -719,52 +1053,11 @@ export default function IssueListPage() {
                         }}
                       />
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        #{issue.id}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {issue.subject}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={issue.trackerName ?? '-'} size="small" variant="outlined" />
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={issue.statusName ?? '-'} size="small" color="success" variant="outlined" />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={issue.priorityName ?? '-'}
-                        size="small"
-                        color={getPriorityColor(issue.priorityName)}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {issue.assignedToName ?? '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 80 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={issue.doneRatio ?? 0}
-                          sx={{ flex: 1, height: 6, borderRadius: 3 }}
-                        />
-                        <Typography variant="caption" color="text.secondary">
-                          {issue.doneRatio ?? 0}%
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {formatDate(issue.updatedAt)}
-                      </Typography>
-                    </TableCell>
+                    {visibleColumns.map((col) => (
+                      <TableCell key={col.key}>
+                        {renderCell(issue, col.key)}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))}
               </TableBody>
@@ -800,7 +1093,10 @@ export default function IssueListPage() {
                           if (issue.id != null) handleSelectOne(issue.id, e.target.checked);
                         }}
                       />
-                      <CardActionArea onClick={() => handleRowClick(issue.id)}>
+                      <CardActionArea
+                        onClick={() => handleRowClick(issue.id)}
+                        onContextMenu={(e) => handleContextMenu(e, issue)}
+                      >
                         <CardContent sx={{ py: 1.5, px: 2 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
                             <Box sx={{ flex: 1, mr: 1 }}>
@@ -851,6 +1147,152 @@ export default function IssueListPage() {
         )}
       </QueryState>
 
+      {/* Context menu */}
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleCloseContextMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null
+            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+            : undefined
+        }
+      >
+        <MenuItem onClick={() => handleContextMenuAction('view')}>
+          <ListItemIcon><OpenInNewIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>상세 보기</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={(e) => setStatusSubMenuAnchor(e.currentTarget)}
+        >
+          <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>상태 변경</ListItemText>
+          <ArrowRightIcon fontSize="small" sx={{ ml: 1 }} />
+        </MenuItem>
+        <MenuItem
+          onClick={(e) => setAssigneeSubMenuAnchor(e.currentTarget)}
+        >
+          <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>담당자 변경</ListItemText>
+          <ArrowRightIcon fontSize="small" sx={{ ml: 1 }} />
+        </MenuItem>
+        <MenuItem
+          onClick={(e) => setPrioritySubMenuAnchor(e.currentTarget)}
+        >
+          <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>우선순위 변경</ListItemText>
+          <ArrowRightIcon fontSize="small" sx={{ ml: 1 }} />
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => handleContextMenuAction('copy')}>
+          <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>이슈 복사</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleContextMenuAction('delete')} sx={{ color: 'error.main' }}>
+          <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+          <ListItemText>이슈 삭제</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* Status sub-menu */}
+      <Menu
+        open={Boolean(statusSubMenuAnchor)}
+        anchorEl={statusSubMenuAnchor}
+        onClose={() => setStatusSubMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      >
+        {(statusesQuery.data ?? []).map((s) => (
+          <MenuItem
+            key={s.id}
+            onClick={() => { if (s.id != null) handleStatusChange(s.id); }}
+            selected={contextMenu?.issue?.statusName === s.name}
+          >
+            {s.name}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* Assignee sub-menu */}
+      <Menu
+        open={Boolean(assigneeSubMenuAnchor)}
+        anchorEl={assigneeSubMenuAnchor}
+        onClose={() => setAssigneeSubMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      >
+        <MenuItem onClick={() => handleAssigneeChange(null)}>
+          <Typography color="text.secondary">미배정</Typography>
+        </MenuItem>
+        {(membersQuery.data ?? []).map((m) => (
+          <MenuItem
+            key={m.userId}
+            onClick={() => { if (m.userId != null) handleAssigneeChange(m.userId); }}
+          >
+            {m.username}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* Priority sub-menu */}
+      <Menu
+        open={Boolean(prioritySubMenuAnchor)}
+        anchorEl={prioritySubMenuAnchor}
+        onClose={() => setPrioritySubMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      >
+        {(prioritiesQuery.data ?? []).map((p) => (
+          <MenuItem
+            key={p.id}
+            onClick={() => { if (p.id != null) handlePriorityChange(p.id); }}
+            selected={contextMenu?.issue?.priorityName === p.name}
+          >
+            {p.name}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>이슈 삭제</DialogTitle>
+        <DialogContent>
+          <Typography>
+            이슈 #{deleteTargetIssue?.id} &quot;{deleteTargetIssue?.subject}&quot;을(를) 삭제하시겠습니까?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            이 작업은 되돌릴 수 없습니다.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>취소</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteConfirm}
+            disabled={deleteIssueMutation.isPending}
+            startIcon={deleteIssueMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {deleteIssueMutation.isPending ? '삭제 중...' : '삭제'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Copy issue dialog */}
+      {copyTargetIssue?.id != null && projectId != null && identifier != null && (
+        <CopyIssueDialog
+          open={copyIssueOpen}
+          onClose={() => { setCopyIssueOpen(false); setCopyTargetIssue(null); }}
+          issueId={copyTargetIssue.id}
+          currentProjectId={projectId}
+          currentProjectIdentifier={identifier}
+          onSuccess={(message) => {
+            setSnackbar({ open: true, message, severity: 'success' });
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
+          }}
+        />
+      )}
+
       {/* Save filter dialog */}
       <Dialog open={saveFilterOpen} onClose={() => setSaveFilterOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>필터 저장</DialogTitle>
@@ -885,6 +1327,14 @@ export default function IssueListPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Import CSV dialog */}
+      <ImportIssuesDialog
+        open={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        projectIdentifier={identifier ?? ''}
+        onSuccess={(message) => setSnackbar({ open: true, message, severity: 'success' })}
+      />
 
       {/* Snackbar for feedback */}
       <Snackbar

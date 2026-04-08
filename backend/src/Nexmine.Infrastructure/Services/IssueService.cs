@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Nexmine.Application.Common.Models;
@@ -66,6 +68,7 @@ public class IssueService : IIssueService
             .Include(i => i.Status)
             .Include(i => i.Priority)
             .Include(i => i.AssignedTo)
+            .Include(i => i.Author)
             .Where(i => i.ProjectId == project.Id)
             .AsQueryable();
 
@@ -133,6 +136,10 @@ public class IssueService : IIssueService
             AssignedToName = i.AssignedTo != null
                 ? $"{i.AssignedTo.FirstName} {i.AssignedTo.LastName}".Trim()
                 : null,
+            AuthorName = $"{i.Author.FirstName} {i.Author.LastName}".Trim(),
+            StartDate = i.StartDate,
+            DueDate = i.DueDate,
+            EstimatedHours = i.EstimatedHours,
             DoneRatio = i.DoneRatio,
             CreatedAt = i.CreatedAt,
             UpdatedAt = i.UpdatedAt
@@ -804,6 +811,257 @@ public class IssueService : IIssueService
         var createdDto = MapToDetailDto(created);
         createdDto.CustomValues = await _customFieldService.GetValuesAsync("issue", created.Id);
         return createdDto;
+    }
+
+    public async Task<IssueDetailDto> MoveIssueAsync(int issueId, MoveIssueRequest request, int userId)
+    {
+        var issue = await _dbContext.Issues
+            .Include(i => i.Project)
+            .Include(i => i.Tracker)
+            .Include(i => i.Status)
+            .Include(i => i.Priority)
+            .Include(i => i.Category)
+            .Include(i => i.Version)
+            .Include(i => i.Author)
+            .Include(i => i.AssignedTo)
+            .Include(i => i.ParentIssue)
+            .FirstOrDefaultAsync(i => i.Id == issueId)
+            ?? throw new KeyNotFoundException("일감을 찾을 수 없습니다.");
+
+        var targetProject = await _dbContext.Projects.FindAsync(request.TargetProjectId)
+            ?? throw new KeyNotFoundException("대상 프로젝트를 찾을 수 없습니다.");
+
+        if (issue.ProjectId == request.TargetProjectId)
+            throw new InvalidOperationException("같은 프로젝트로는 이동할 수 없습니다.");
+
+        var oldProjectName = issue.Project.Name;
+
+        // Create journal for the move
+        var journal = new Journal
+        {
+            IssueId = issue.Id,
+            UserId = userId,
+            Details =
+            [
+                new JournalDetail
+                {
+                    PropertyName = "projectId",
+                    OldValue = oldProjectName,
+                    NewValue = targetProject.Name
+                }
+            ]
+        };
+        _dbContext.Journals.Add(journal);
+
+        // Move issue
+        issue.ProjectId = request.TargetProjectId;
+        // Category and Version are project-scoped, reset them
+        issue.CategoryId = null;
+        issue.VersionId = null;
+
+        await _dbContext.SaveChangesAsync();
+
+        // Reload with navigation properties
+        var moved = await _dbContext.Issues
+            .Include(i => i.Tracker)
+            .Include(i => i.Status)
+            .Include(i => i.Priority)
+            .Include(i => i.Category)
+            .Include(i => i.Version)
+            .Include(i => i.Author)
+            .Include(i => i.AssignedTo)
+            .Include(i => i.ParentIssue)
+            .FirstAsync(i => i.Id == issue.Id);
+
+        var dto = MapToDetailDto(moved);
+        dto.CustomValues = await _customFieldService.GetValuesAsync("issue", moved.Id);
+        return dto;
+    }
+
+    public async Task<ImportIssuesResult> ImportFromCsvAsync(string projectIdentifier, Stream csvStream, int userId)
+    {
+        var project = await _dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Identifier == projectIdentifier)
+            ?? throw new KeyNotFoundException($"프로젝트 '{projectIdentifier}'를 찾을 수 없습니다.");
+
+        var result = new ImportIssuesResult();
+
+        // Pre-load lookup data
+        var trackers = await _dbContext.Trackers.ToListAsync();
+        var statuses = await _dbContext.IssueStatuses.ToListAsync();
+        var priorities = await _dbContext.IssuePriorities.ToListAsync();
+        var users = await _dbContext.Users.ToListAsync();
+
+        var defaultTracker = trackers.FirstOrDefault(t => t.IsDefault) ?? trackers.OrderBy(t => t.Position).First();
+        var defaultStatus = statuses.OrderBy(s => s.Position).First();
+        var defaultPriority = priorities.FirstOrDefault(p => p.IsDefault) ?? priorities.OrderBy(p => p.Position).First();
+
+        using var reader = new StreamReader(csvStream, Encoding.UTF8);
+        // Skip header
+        await reader.ReadLineAsync();
+
+        var lineNumber = 1;
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            lineNumber++;
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            try
+            {
+                var fields = ParseCsvLine(line);
+
+                var subject = fields.Length > 0 ? fields[0].Trim() : "";
+                if (string.IsNullOrWhiteSpace(subject))
+                {
+                    result.Errors.Add($"{lineNumber}행: 제목이 비어있습니다.");
+                    result.ErrorCount++;
+                    continue;
+                }
+
+                // Tracker
+                var trackerName = fields.Length > 1 ? fields[1].Trim() : "";
+                var tracker = !string.IsNullOrWhiteSpace(trackerName)
+                    ? trackers.FirstOrDefault(t => t.Name.Equals(trackerName, StringComparison.OrdinalIgnoreCase)) ?? defaultTracker
+                    : defaultTracker;
+
+                // Status
+                var statusName = fields.Length > 2 ? fields[2].Trim() : "";
+                var status = !string.IsNullOrWhiteSpace(statusName)
+                    ? statuses.FirstOrDefault(s => s.Name.Equals(statusName, StringComparison.OrdinalIgnoreCase)) ?? defaultStatus
+                    : defaultStatus;
+
+                // Priority
+                var priorityName = fields.Length > 3 ? fields[3].Trim() : "";
+                var priority = !string.IsNullOrWhiteSpace(priorityName)
+                    ? priorities.FirstOrDefault(p => p.Name.Equals(priorityName, StringComparison.OrdinalIgnoreCase)) ?? defaultPriority
+                    : defaultPriority;
+
+                // Assignee
+                var assigneeName = fields.Length > 4 ? fields[4].Trim() : "";
+                int? assignedToId = null;
+                if (!string.IsNullOrWhiteSpace(assigneeName))
+                {
+                    var assignee = users.FirstOrDefault(u =>
+                        u.Username.Equals(assigneeName, StringComparison.OrdinalIgnoreCase) ||
+                        $"{u.FirstName} {u.LastName}".Trim().Equals(assigneeName, StringComparison.OrdinalIgnoreCase));
+                    assignedToId = assignee?.Id;
+                }
+
+                // Start date
+                var startDateStr = fields.Length > 5 ? fields[5].Trim() : "";
+                DateOnly? startDate = null;
+                if (!string.IsNullOrWhiteSpace(startDateStr) &&
+                    DateOnly.TryParseExact(startDateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var sd))
+                {
+                    startDate = sd;
+                }
+
+                // Due date
+                var dueDateStr = fields.Length > 6 ? fields[6].Trim() : "";
+                DateOnly? dueDate = null;
+                if (!string.IsNullOrWhiteSpace(dueDateStr) &&
+                    DateOnly.TryParseExact(dueDateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dd))
+                {
+                    dueDate = dd;
+                }
+
+                // Done ratio
+                var doneRatioStr = fields.Length > 7 ? fields[7].Trim() : "";
+                var doneRatio = 0;
+                if (!string.IsNullOrWhiteSpace(doneRatioStr) && int.TryParse(doneRatioStr, out var dr))
+                {
+                    doneRatio = Math.Clamp(dr, 0, 100);
+                }
+
+                // Description
+                var description = fields.Length > 8 ? fields[8].Trim() : null;
+                if (string.IsNullOrWhiteSpace(description)) description = null;
+
+                // Calculate next position
+                var maxPosition = await _dbContext.Issues
+                    .Where(i => i.ProjectId == project.Id && i.StatusId == status.Id)
+                    .MaxAsync(i => (int?)i.Position) ?? 0;
+
+                var issue = new Issue
+                {
+                    ProjectId = project.Id,
+                    TrackerId = tracker.Id,
+                    StatusId = status.Id,
+                    PriorityId = priority.Id,
+                    AuthorId = userId,
+                    AssignedToId = assignedToId,
+                    Subject = subject,
+                    Description = description,
+                    StartDate = startDate,
+                    DueDate = dueDate,
+                    DoneRatio = doneRatio,
+                    Position = maxPosition + 1
+                };
+
+                _dbContext.Issues.Add(issue);
+                await _dbContext.SaveChangesAsync();
+                result.SuccessCount++;
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add($"{lineNumber}행: {ex.Message}");
+                result.ErrorCount++;
+            }
+        }
+
+        return result;
+    }
+
+    private static string[] ParseCsvLine(string line)
+    {
+        var fields = new List<string>();
+        var current = new StringBuilder();
+        var inQuotes = false;
+
+        for (var i = 0; i < line.Length; i++)
+        {
+            var ch = line[i];
+
+            if (inQuotes)
+            {
+                if (ch == '"')
+                {
+                    if (i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        current.Append('"');
+                        i++; // skip escaped quote
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+                else
+                {
+                    current.Append(ch);
+                }
+            }
+            else
+            {
+                if (ch == '"')
+                {
+                    inQuotes = true;
+                }
+                else if (ch == ',')
+                {
+                    fields.Add(current.ToString());
+                    current.Clear();
+                }
+                else
+                {
+                    current.Append(ch);
+                }
+            }
+        }
+
+        fields.Add(current.ToString());
+        return fields.ToArray();
     }
 
     private static IssueDetailDto MapToDetailDto(Issue issue)

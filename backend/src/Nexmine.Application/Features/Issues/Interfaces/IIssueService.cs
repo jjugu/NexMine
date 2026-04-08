@@ -13,4 +13,6 @@ public interface IIssueService
     Task<IssueDetailDto?> UpdatePositionAsync(int id, UpdateIssuePositionRequest request, int userId);
     Task<int> BulkUpdateAsync(BulkUpdateIssuesRequest request, int userId);
     Task<IssueDetailDto> CopyIssueAsync(int issueId, CopyIssueRequest request, int userId);
+    Task<IssueDetailDto> MoveIssueAsync(int issueId, MoveIssueRequest request, int userId);
+    Task<ImportIssuesResult> ImportFromCsvAsync(string projectIdentifier, Stream csvStream, int userId);
 }
