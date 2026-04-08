@@ -12,6 +12,13 @@ interface IssueNotification {
   notes?: string;
 }
 
+interface PersonalNotification {
+  eventType: string;
+  message: string;
+  projectIdentifier?: string;
+  issueId?: number;
+}
+
 interface ToastItem {
   id: number;
   message: string;
@@ -114,10 +121,20 @@ export default function RealtimeNotifications() {
       );
     });
 
+    // Personal notifications (works on any page)
+    const unsubPersonal = on('PersonalNotification', (...args: unknown[]) => {
+      const data = args[0] as PersonalNotification;
+      const navigateTo = data.projectIdentifier && data.issueId
+        ? `/projects/${data.projectIdentifier}/issues/${data.issueId}`
+        : '/dashboard';
+      addToast(data.message, navigateTo);
+    });
+
     return () => {
       unsubCreated();
       unsubUpdated();
       unsubCommented();
+      unsubPersonal();
     };
   }, [isConnected, on, user?.username, addToast]);
 

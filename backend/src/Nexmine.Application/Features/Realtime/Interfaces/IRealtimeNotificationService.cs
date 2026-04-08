@@ -21,4 +21,9 @@ public interface IRealtimeNotificationService
     /// Notify users viewing an issue detail page that the issue data changed.
     /// </summary>
     Task NotifyIssueChangedAsync(int issueId, string userName);
+
+    /// <summary>
+    /// Notify a specific user directly (works on any page).
+    /// </summary>
+    Task NotifyUserAsync(int userId, string eventType, string message, string? projectIdentifier, int? issueId);
 }

@@ -264,6 +264,17 @@ public class IssueService : IIssueService
         await _realtimeNotificationService.NotifyIssueCreatedAsync(
             projectIdentifier, created.Id, created.Subject, authorName);
 
+        // Notify assignee directly (works on any page)
+        if (created.AssignedToId.HasValue && created.AssignedToId.Value != userId)
+        {
+            await _realtimeNotificationService.NotifyUserAsync(
+                created.AssignedToId.Value,
+                "issue_assigned",
+                $"{authorName}님이 이슈 '#{created.Id} {created.Subject}'을 할당했습니다",
+                projectIdentifier,
+                created.Id);
+        }
+
         return createdDto;
     }
 
@@ -450,6 +461,17 @@ public class IssueService : IIssueService
             await _realtimeNotificationService.NotifyIssueUpdatedAsync(
                 project.Identifier, updated.Id, updated.Subject, userName);
             await _realtimeNotificationService.NotifyIssueChangedAsync(updated.Id, userName);
+
+            // Notify assignee directly if assigned to someone else
+            if (updated.AssignedToId.HasValue && updated.AssignedToId.Value != userId)
+            {
+                await _realtimeNotificationService.NotifyUserAsync(
+                    updated.AssignedToId.Value,
+                    "issue_updated",
+                    $"{userName}님이 이슈 '#{updated.Id} {updated.Subject}'을 수정했습니다",
+                    project.Identifier,
+                    updated.Id);
+            }
         }
 
         return updatedDto;

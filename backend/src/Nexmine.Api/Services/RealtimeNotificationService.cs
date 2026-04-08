@@ -56,4 +56,16 @@ public class RealtimeNotificationService : IRealtimeNotificationService
             timestamp = DateTime.UtcNow
         });
     }
+
+    public async Task NotifyUserAsync(int userId, string eventType, string message, string? projectIdentifier, int? issueId)
+    {
+        await _hubContext.Clients.Group($"user:{userId}").SendAsync("PersonalNotification", new
+        {
+            eventType,
+            message,
+            projectIdentifier,
+            issueId,
+            timestamp = DateTime.UtcNow
+        });
+    }
 }

@@ -93,6 +93,17 @@ public class NexmineHub : Hub
         });
     }
 
+    public override async Task OnConnectedAsync()
+    {
+        // Auto-join personal group for direct notifications regardless of page
+        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrEmpty(userId))
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"user:{userId}");
+        }
+        await base.OnConnectedAsync();
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         // Groups automatically removes the connection on disconnect.
