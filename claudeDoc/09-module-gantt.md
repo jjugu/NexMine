@@ -48,3 +48,4 @@
 |------|-----------|------|--------|-----------|
 | 2026-04-07 | 간트 바 드래그 시 클릭 판정되어 이슈 상세로 이동 | mouseDown→mouseUp 사이에 이동량 체크 없이 onClick 발생 | 드래그 시작 시 마우스 이동량 추적, 3px 미만 이동만 클릭으로 판정 (wasDragged ref) | 드래그+클릭 공존 시 반드시 이동 임계값(threshold)으로 구분 |
 | 2026-04-07 | 간트 바 드래그 시 버벅거림 | setDragOffset가 매 mousemove마다 React 리렌더링 유발 | 이동(move) 드래그는 CSS translateX로 DOM 직접 조작, mouseUp에서만 React 상태 업데이트 | SVG 드래그는 React state 대신 DOM 직접 조작(transform) 사용, 리사이즈만 state 사용 |
+| 2026-04-08 | 다크모드에서 간트 헤더/주말 배경이 흰색 | SVG fill에 palette.grey[50], grey[100] 하드코딩 | palette.background.default, palette.action.hover로 변경 | SVG fill 색상도 muiTheme.palette 시맨틱 토큰 사용, grey.N 하드코딩 금지 |

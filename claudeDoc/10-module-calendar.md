@@ -51,4 +51,5 @@
 
 | 날짜 | 오류 내용 | 원인 | 해결책 | 방지 규칙 |
 |------|-----------|------|--------|-----------|
-| - | - | - | - | - |
+| 2026-04-08 | 캘린더 월 이동 시 깜빡임 | 날짜 범위 변경 시 queryKey가 바뀌어 이전 데이터가 사라짐 | useQuery에 placeholderData: (prev) => prev 추가 | 날짜 범위/필터 변경으로 queryKey가 바뀌는 쿼리에는 placeholderData로 이전 데이터 유지 |
+| 2026-04-08 | 다크모드에서 캘린더 셀/헤더가 흰색 | FullCalendar 자체 CSS가 다크모드 미지원 | .fc-theme-standard td/th, .fc-daygrid-day 등에 MUI 테마 색상 오버라이드 | FullCalendar 사용 시 다크모드 CSS 오버라이드 필수 (borderColor: divider, bgcolor: background.default) |

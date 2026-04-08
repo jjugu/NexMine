@@ -50,3 +50,5 @@ onDragEnd: (result) => {
 | 2026-04-07 | IsClosed 컬럼 축소 버튼 클릭 시 동작 안 함 | 헤더 onClick(토글)과 버튼 onClick(닫기)이 이벤트 버블링으로 동시 실행되어 상태가 원복됨 | 버튼 onClick에 `e.stopPropagation()` 추가 | 부모-자식 모두 onClick이 있을 때 자식에 반드시 stopPropagation 처리 |
 | 2026-04-07 | 칸반 드래그 시 버벅거림 | KanbanCard/KanbanColumn이 React.memo 없이 매 드래그마다 전체 리렌더링, 카드마다 useNavigate/useParams 호출도 오버헤드 | 1) Card/Column을 React.memo로 감싸기 2) navigate를 부모 콜백으로 전달 | DnD 컴포넌트는 반드시 React.memo 적용, 카드 내부에서 useNavigate 등 훅 직접 호출 금지 → 부모에서 콜백 전달 |
 | 2026-04-08 | 칸반 페이지 "불러오기 실패" 에러 | fetchKanbanIssues에서 PageSize=500 요청하지만 IssueFilterParamsValidator가 max 100 제한 → 400 Bad Request | PageSize를 100으로 변경 | API 호출 시 PageSize는 반드시 validator 최대값(100) 이하로 설정 |
+| 2026-04-08 | 칸반 드래그 후 깜빡임 | setLocalIssueMap(null) → invalidateQueries 사이에 이전 서버 데이터가 잠깐 표시 | refetchQueries 완료 후 setLocalIssueMap(null) 호출 | 낙관적 업데이트 해제는 반드시 서버 데이터 도착 후 수행 |
+| 2026-04-08 | 다크모드에서 칸반 컬럼 배경이 흰색 | bgcolor: 'grey.100' 하드코딩 | bgcolor: 'action.hover'로 변경 (테마 반응) | 배경색은 하드코딩 grey.N 대신 action.hover, background.default 등 시맨틱 토큰 사용 |
