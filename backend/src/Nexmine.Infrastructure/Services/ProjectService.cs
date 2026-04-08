@@ -243,4 +243,195 @@ public class ProjectService : IProjectService
         return await _dbContext.ProjectModules
             .AnyAsync(pm => pm.ProjectId == project.Id && pm.ModuleName == moduleName);
     }
+
+    public async Task<ProjectDto> CopyProjectAsync(string sourceIdentifier, CopyProjectRequest request, int userId)
+    {
+        // 1. Validate identifier uniqueness
+        var identifierExists = await _dbContext.Projects
+            .AnyAsync(p => p.Identifier == request.Identifier);
+
+        if (identifierExists)
+        {
+            throw new InvalidOperationException("동일한 식별자의 프로젝트가 이미 존재합니다.");
+        }
+
+        // 2. Load source project with related data
+        var source = await _dbContext.Projects
+            .Include(p => p.Modules)
+            .Include(p => p.Members)
+            .Include(p => p.Categories)
+            .Include(p => p.Versions)
+            .Include(p => p.WikiPages)
+            .Include(p => p.Issues)
+            .FirstOrDefaultAsync(p => p.Identifier == sourceIdentifier);
+
+        if (source is null)
+        {
+            throw new KeyNotFoundException($"원본 프로젝트 '{sourceIdentifier}'를 찾을 수 없습니다.");
+        }
+
+        // 3. Create new project
+        var newProject = new Project
+        {
+            Name = request.Name,
+            Identifier = request.Identifier,
+            Description = request.Description ?? source.Description,
+            IsPublic = request.IsPublic
+        };
+
+        _dbContext.Projects.Add(newProject);
+        await _dbContext.SaveChangesAsync();
+
+        // Always add the current user as Manager
+        _dbContext.ProjectMemberships.Add(new ProjectMembership
+        {
+            ProjectId = newProject.Id,
+            UserId = userId,
+            RoleId = 1 // Manager
+        });
+
+        // 4. Copy modules
+        if (request.CopyModules && source.Modules.Count > 0)
+        {
+            foreach (var mod in source.Modules)
+            {
+                _dbContext.ProjectModules.Add(new ProjectModule
+                {
+                    ProjectId = newProject.Id,
+                    ModuleName = mod.ModuleName
+                });
+            }
+        }
+        else
+        {
+            // Enable all modules by default
+            foreach (var mod in AllModules)
+            {
+                _dbContext.ProjectModules.Add(new ProjectModule
+                {
+                    ProjectId = newProject.Id,
+                    ModuleName = mod
+                });
+            }
+        }
+
+        // 5. Copy members (excluding the current user who is already added as Manager)
+        if (request.CopyMembers)
+        {
+            foreach (var member in source.Members.Where(m => m.UserId != userId))
+            {
+                _dbContext.ProjectMemberships.Add(new ProjectMembership
+                {
+                    ProjectId = newProject.Id,
+                    UserId = member.UserId,
+                    RoleId = member.RoleId
+                });
+            }
+        }
+
+        // 6. Copy versions
+        if (request.CopyVersions)
+        {
+            foreach (var version in source.Versions)
+            {
+                _dbContext.Versions.Add(new Domain.Entities.Version
+                {
+                    ProjectId = newProject.Id,
+                    Name = version.Name,
+                    Description = version.Description,
+                    Status = version.Status,
+                    DueDate = version.DueDate
+                });
+            }
+        }
+
+        // 7. Copy categories
+        if (request.CopyCategories)
+        {
+            foreach (var category in source.Categories)
+            {
+                _dbContext.IssueCategories.Add(new IssueCategory
+                {
+                    ProjectId = newProject.Id,
+                    Name = category.Name
+                });
+            }
+        }
+
+        // 8. Copy wiki pages (flat copy, preserving tree structure via slug mapping)
+        if (request.CopyWiki)
+        {
+            // Build a mapping from old page Id to new page entity for parent references
+            var wikiPageMap = new Dictionary<int, WikiPage>();
+
+            // First pass: copy root pages (no parent)
+            foreach (var page in source.WikiPages.Where(p => p.ParentPageId == null))
+            {
+                var newPage = new WikiPage
+                {
+                    ProjectId = newProject.Id,
+                    Title = page.Title,
+                    Slug = page.Slug,
+                    ContentHtml = page.ContentHtml,
+                    AuthorId = userId,
+                    Version = 1
+                };
+                _dbContext.WikiPages.Add(newPage);
+                wikiPageMap[page.Id] = newPage;
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            // Second pass: copy child pages
+            foreach (var page in source.WikiPages.Where(p => p.ParentPageId != null))
+            {
+                var newPage = new WikiPage
+                {
+                    ProjectId = newProject.Id,
+                    ParentPageId = wikiPageMap.ContainsKey(page.ParentPageId!.Value)
+                        ? wikiPageMap[page.ParentPageId.Value].Id
+                        : null,
+                    Title = page.Title,
+                    Slug = page.Slug,
+                    ContentHtml = page.ContentHtml,
+                    AuthorId = userId,
+                    Version = 1
+                };
+                _dbContext.WikiPages.Add(newPage);
+                wikiPageMap[page.Id] = newPage;
+            }
+        }
+
+        // 9. Copy issues
+        if (request.CopyIssues)
+        {
+            foreach (var issue in source.Issues)
+            {
+                _dbContext.Issues.Add(new Issue
+                {
+                    ProjectId = newProject.Id,
+                    TrackerId = issue.TrackerId,
+                    StatusId = 1, // Always New
+                    PriorityId = issue.PriorityId,
+                    AuthorId = userId,
+                    Subject = issue.Subject,
+                    Description = issue.Description,
+                    DoneRatio = 0,
+                    Position = issue.Position
+                });
+            }
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        // 10. Return the new project as DTO
+        var enabledModules = await _dbContext.ProjectModules
+            .Where(pm => pm.ProjectId == newProject.Id && pm.ModuleName != "_configured")
+            .Select(pm => pm.ModuleName)
+            .ToListAsync();
+
+        var dto = _mapper.Map<ProjectDto>(newProject);
+        dto.EnabledModules = enabledModules;
+        return dto;
+    }
 }

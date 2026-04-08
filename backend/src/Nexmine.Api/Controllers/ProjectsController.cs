@@ -104,6 +104,17 @@ public class ProjectsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{identifier}/copy")]
+    [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CopyProjectAsync(string identifier, [FromBody] CopyProjectRequest request)
+    {
+        var userId = User.GetUserId();
+        var result = await _projectService.CopyProjectAsync(identifier, request, userId);
+        return CreatedAtAction("GetByIdentifier", "Projects", new { identifier = result.Identifier }, result);
+    }
+
     [HttpGet("{identifier}/modules")]
     [ProducesResponseType(typeof(ProjectModulesDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

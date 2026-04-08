@@ -13,4 +13,5 @@ public interface IProjectService
     Task<ProjectModulesDto> GetModulesAsync(string projectIdentifier);
     Task UpdateModulesAsync(string projectIdentifier, UpdateProjectModulesRequest request);
     Task<bool> IsModuleEnabledAsync(string projectIdentifier, string moduleName);
+    Task<ProjectDto> CopyProjectAsync(string sourceIdentifier, CopyProjectRequest request, int userId);
 }

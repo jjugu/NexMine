@@ -19,9 +19,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ArchiveIcon from '@mui/icons-material/Archive';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import axiosInstance from '../../../api/axiosInstance';
+import CopyProjectDialog from './CopyProjectDialog';
 import type {
   ProjectDto,
   ProjectMemberDto,
@@ -792,6 +794,33 @@ function ModulesSection({ identifier }: { identifier: string }) {
   );
 }
 
+function CopyProjectSection({ project }: { project: ProjectDto | undefined }) {
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+
+  if (!project) return null;
+
+  return (
+    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+      <Typography variant="h6" sx={{ mb: 1 }}>프로젝트 복사</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        이 프로젝트의 설정과 데이터를 기반으로 새 프로젝트를 생성합니다.
+      </Typography>
+      <Button
+        variant="outlined"
+        startIcon={<ContentCopyIcon />}
+        onClick={() => setCopyDialogOpen(true)}
+      >
+        프로젝트 복사
+      </Button>
+      <CopyProjectDialog
+        open={copyDialogOpen}
+        onClose={() => setCopyDialogOpen(false)}
+        sourceProject={project}
+      />
+    </Paper>
+  );
+}
+
 function ArchiveSection({ identifier }: { identifier: string }) {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -916,6 +945,7 @@ export default function ProjectSettingsPage() {
       <MembersSection identifier={identifier} />
       <CategoriesSection identifier={identifier} />
       <ModulesSection identifier={identifier} />
+      <CopyProjectSection project={projectQuery.data} />
       <ArchiveSection identifier={identifier} />
     </Box>
   );
