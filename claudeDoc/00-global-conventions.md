@@ -92,3 +92,6 @@ scope: auth, project, issue, kanban, gantt, calendar, wiki, docs, api, ui
 | 2026-04-07 | 시간 표시가 UTC(오전 4시)로 나옴, 실제는 KST(오후 1시) | 백엔드 DateTime.UtcNow 저장 시 Z 접미사 없이 직렬화 → 프론트에서 로컬로 오해석 | formatDateTime에서 Z 접미사 추가하여 UTC로 파싱 후 브라우저 자동 변환 | DateTime 문자열은 항상 UTC 여부 확인 후 파싱, DateOnly는 시간대 변환 금지 |
 | 2026-04-07 | 관리자 트래커/우선순위 순서 변경 버튼 무반응 | PUT API 호출 후 목록을 refetch하지 않거나, position 값 업데이트 로직 누락 | position swap 로직 구현 + 성공 후 invalidateQueries | 순서 변경 기능은 API 호출 → 성공 시 목록 refetch 패턴 필수 |
 | 2026-04-07 | 트래커/우선순위 기본(isDefault) 설정 시 중복 허용됨 | 백엔드에서 isDefault=true 설정 시 기존 기본 항목의 isDefault를 false로 해제하지 않음 | 서비스에서 isDefault=true 업데이트 시 다른 항목들의 isDefault를 일괄 false로 변경 | isDefault 같은 단일 선택 플래그는 설정 시 반드시 기존 항목 해제 로직 포함 |
+| 2026-04-08 | 시스템 설정 저장 시 빈 값(logo_url 등) 400 에러 | AdminSettingsController에서 Value를 IsNullOrWhiteSpace로 검증하여 빈 문자열 거부 | Value 필수 검증 제거, null일 때만 빈 문자열로 대체 | 시스템 설정 Value는 빈 문자열을 허용해야 함 (로고 URL 미설정 등) |
+| 2026-04-08 | 여러 설정 동시 저장 시 성공→실패 Snackbar 교차 표시 | saveMutation.mutate를 forEach로 병렬 호출하면 onSuccess/onError가 각각 독립 트리거 | async/await로 순차 실행, 전체 성공/실패 후 1번만 Snackbar 표시 | 다수 API를 일괄 호출할 때 useMutation.mutate 반복 금지 → async/await 순차 호출 |
+| 2026-04-08 | 로고 이미지 img 태그에서 로드 실패 | 첨부파일 다운로드 API가 [Authorize] → img 태그는 인증 헤더 미전송 | 공개 엔드포인트 GET /api/settings/logo 추가 (AllowAnonymous) | 인증 필요 파일을 img/favicon으로 표시할 때는 공개 다운로드 엔드포인트 필요 |

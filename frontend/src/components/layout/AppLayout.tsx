@@ -145,7 +145,7 @@ export default function AppLayout() {
   });
 
   const appDisplayName = appSettings?.appName || 'Nexmine';
-  const appLogoUrl = appSettings?.logoUrl || null;
+  const appLogoUrl = appSettings?.logoUrl ? '/api/settings/logo' : null;
 
   // Detect if we are inside a project context (/projects/{identifier} and deeper)
   const projectMatch = location.pathname.match(/^\/projects\/([^/]+)/);

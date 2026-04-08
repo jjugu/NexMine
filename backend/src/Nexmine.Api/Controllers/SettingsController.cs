@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nexmine.Application.Features.Documents.Interfaces;
 using Nexmine.Application.Features.Settings.Dtos;
 using Nexmine.Application.Features.Settings.Interfaces;
 
@@ -11,10 +12,12 @@ namespace Nexmine.Api.Controllers;
 public class SettingsController : ControllerBase
 {
     private readonly ISystemSettingService _systemSettingService;
+    private readonly IAttachmentService _attachmentService;
 
-    public SettingsController(ISystemSettingService systemSettingService)
+    public SettingsController(ISystemSettingService systemSettingService, IAttachmentService attachmentService)
     {
         _systemSettingService = systemSettingService;
+        _attachmentService = attachmentService;
     }
 
     [HttpGet("registration-mode")]
@@ -42,5 +45,30 @@ public class SettingsController : ControllerBase
         };
 
         return Ok(response);
+    }
+
+    [HttpGet("logo")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetLogoAsync()
+    {
+        var logoUrl = await _systemSettingService.GetAsync("logo_url");
+        if (string.IsNullOrEmpty(logoUrl))
+            return NotFound();
+
+        // Extract attachment ID from URL pattern: /api/attachments/{id}/download
+        if (logoUrl.Contains("/attachments/") && logoUrl.Contains("/download"))
+        {
+            var parts = logoUrl.Split('/');
+            var idIndex = Array.IndexOf(parts, "attachments") + 1;
+            if (idIndex > 0 && idIndex < parts.Length && int.TryParse(parts[idIndex], out var attachmentId))
+            {
+                var result = await _attachmentService.DownloadAsync(attachmentId);
+                if (result is not null)
+                    return File(result.Value.Stream, result.Value.ContentType, result.Value.FileName);
+            }
+        }
+
+        // If it's an external URL, redirect
+        return Redirect(logoUrl);
     }
 }

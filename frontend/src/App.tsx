@@ -1,5 +1,5 @@
 import './i18n';
-import { lazy, Suspense, Component, useMemo } from 'react';
+import { lazy, Suspense, Component, useMemo, useEffect } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, CircularProgress, Box, Alert, Typography, Button } from '@mui/material';
@@ -123,6 +123,23 @@ function AppContent() {
 
   const primaryColor = appSettings?.primaryColor;
   const theme = useMemo(() => createAppTheme(mode, primaryColor), [mode, primaryColor]);
+
+  // Dynamic browser tab title & favicon
+  useEffect(() => {
+    document.title = appSettings?.appName || 'Nexmine';
+  }, [appSettings?.appName]);
+
+  useEffect(() => {
+    if (appSettings?.logoUrl) {
+      let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = '/api/settings/logo';
+    }
+  }, [appSettings?.logoUrl]);
 
   return (
     <ThemeProvider theme={theme}>

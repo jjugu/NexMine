@@ -303,15 +303,47 @@ export default function AdminSettingsPage() {
             )}
           </Box>
 
-          {/* Logo URL */}
-          <TextField
-            label="로고 URL"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder="https://example.com/logo.png"
-            fullWidth
-            sx={{ mb: 1 }}
-          />
+          {/* Logo Upload */}
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>로고</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+            <Button variant="outlined" component="label" size="small">
+              파일 업로드
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  formData.append('attachableType', 'system');
+                  formData.append('attachableId', '0');
+                  try {
+                    const res = await axiosInstance.post('/attachments', formData);
+                    const uploaded = res.data;
+                    const downloadUrl = `/api/attachments/${uploaded.id}/download`;
+                    setLogoUrl(downloadUrl);
+                    setSnackbar({ open: true, message: '로고가 업로드되었습니다.', severity: 'success' });
+                  } catch {
+                    setSnackbar({ open: true, message: '로고 업로드에 실패했습니다.', severity: 'error' });
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </Button>
+            <TextField
+              label="또는 URL 직접 입력"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="https://example.com/logo.png"
+              size="small"
+              sx={{ flex: 1 }}
+            />
+            {logoUrl && (
+              <Button size="small" color="error" onClick={() => setLogoUrl('')}>제거</Button>
+            )}
+          </Box>
           {logoUrl && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
