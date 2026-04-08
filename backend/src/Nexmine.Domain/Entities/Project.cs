@@ -17,4 +17,5 @@ public class Project : BaseEntity
     public List<Document> Documents { get; set; } = [];
     public List<News> News { get; set; } = [];
     public List<IssueTemplate> IssueTemplates { get; set; } = [];
+    public List<Forum> Forums { get; set; } = [];
 }

@@ -14,6 +14,7 @@ using Nexmine.Application.Features.News.Interfaces;
 using Nexmine.Application.Features.Projects.Interfaces;
 using Nexmine.Application.Features.Reports.Interfaces;
 using Nexmine.Application.Features.Roadmap.Interfaces;
+using Nexmine.Application.Features.Forums.Interfaces;
 using Nexmine.Application.Features.SavedQueries.Interfaces;
 using Nexmine.Application.Features.Search.Interfaces;
 using Nexmine.Application.Features.Watchers.Interfaces;
@@ -87,6 +88,9 @@ public static class DependencyInjection
 
         // Saved Queries
         services.AddScoped<ISavedQueryService, SavedQueryService>();
+
+        // Forums
+        services.AddScoped<IForumService, ForumService>();
 
         return services;
     }

@@ -37,6 +37,7 @@ import FlagIcon from '@mui/icons-material/Flag';
 import HistoryIcon from '@mui/icons-material/History';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
+import ForumIcon from '@mui/icons-material/Forum';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import GroupIcon from '@mui/icons-material/Group';
@@ -85,6 +86,7 @@ function getProjectSubNav(identifier: string): ProjectSubNavItem[] {
     { label: '캘린더', icon: <CalendarMonthIcon />, path: `/projects/${identifier}/calendar` },
     { label: '위키', icon: <ArticleIcon />, path: `/projects/${identifier}/wiki` },
     { label: '문서', icon: <DescriptionIcon />, path: `/projects/${identifier}/documents` },
+    { label: '게시판', icon: <ForumIcon />, path: `/projects/${identifier}/forums` },
     { label: '뉴스', icon: <NewspaperIcon />, path: `/projects/${identifier}/news` },
     { label: '로드맵', icon: <FlagIcon />, path: `/projects/${identifier}/roadmap` },
     { label: '활동', icon: <HistoryIcon />, path: `/projects/${identifier}/activity` },

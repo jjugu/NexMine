@@ -55,6 +55,9 @@ const ActivityPage = lazy(() => import('./features/activity/components/ActivityP
 // News
 const NewsPage = lazy(() => import('./features/news/components/NewsPage'));
 
+// Forums
+const ForumPage = lazy(() => import('./features/forums/components/ForumPage'));
+
 // Reports
 const TimeReportPage = lazy(() => import('./features/reports/components/TimeReportPage'));
 
@@ -139,6 +142,7 @@ function AppContent() {
                 <Route path="/projects/:identifier/wiki/:slug/edit" element={<WikiPageEditor />} />
                 <Route path="/projects/:identifier/documents" element={<DocumentListPage />} />
                 <Route path="/projects/:identifier/documents/:id" element={<DocumentDetailPage />} />
+                <Route path="/projects/:identifier/forums" element={<ForumPage />} />
                 <Route path="/projects/:identifier/news" element={<NewsPage />} />
                 <Route path="/projects/:identifier/activity" element={<ActivityPage />} />
                 <Route path="/projects/:identifier/settings" element={<ProjectSettingsPage />} />

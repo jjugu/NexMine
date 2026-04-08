@@ -20,6 +20,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import axiosInstance from '../../../api/axiosInstance';
@@ -665,6 +666,7 @@ export default function IssueDetailPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isCopyOpen, setIsCopyOpen] = useState(false);
   const [editCustomValues, setEditCustomValues] = useState<Record<number, string>>({});
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
@@ -825,6 +827,27 @@ export default function IssueDetailPage() {
     deleteMutation.mutate();
   }
 
+  async function handleExportPdf() {
+    if (!issueId) return;
+    setIsExportingPdf(true);
+    try {
+      const response = await axiosInstance.get(
+        `/issues/${issueId}/export/pdf`,
+        { responseType: 'blob' },
+      );
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `issue_${issueId}.pdf`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch {
+      setSnackbar({ open: true, message: 'PDF 내보내기에 실패했습니다.', severity: 'error' });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }
+
   // Loading
   if (issueQuery.isLoading) {
     return (
@@ -903,6 +926,13 @@ export default function IssueDetailPage() {
         <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
           {!isEditing ? (
             <>
+              <Tooltip title="PDF">
+                <span>
+                  <IconButton onClick={handleExportPdf} disabled={isExportingPdf}>
+                    {isExportingPdf ? <CircularProgress size={20} /> : <PictureAsPdfIcon />}
+                  </IconButton>
+                </span>
+              </Tooltip>
               <Tooltip title="복사">
                 <IconButton onClick={() => setIsCopyOpen(true)}>
                   <ContentCopyIcon />

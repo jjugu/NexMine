@@ -22,4 +22,6 @@ public class User : BaseEntity
     public List<Attachment> Attachments { get; set; } = [];
     public List<Document> AuthoredDocuments { get; set; } = [];
     public List<News> AuthoredNews { get; set; } = [];
+    public List<ForumTopic> ForumTopics { get; set; } = [];
+    public List<ForumReply> ForumReplies { get; set; } = [];
 }

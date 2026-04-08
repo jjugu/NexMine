@@ -40,6 +40,9 @@ public class NexmineDbContext : DbContext
     public DbSet<UserGroup> UserGroups => Set<UserGroup>();
     public DbSet<UserGroupMember> UserGroupMembers => Set<UserGroupMember>();
     public DbSet<SavedQuery> SavedQueries => Set<SavedQuery>();
+    public DbSet<Forum> Forums => Set<Forum>();
+    public DbSet<ForumTopic> ForumTopics => Set<ForumTopic>();
+    public DbSet<ForumReply> ForumReplies => Set<ForumReply>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

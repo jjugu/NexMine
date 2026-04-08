@@ -30,4 +30,28 @@ public class ExportController : ControllerBase
         var fileName = $"issues_{DateTime.UtcNow:yyyy-MM-dd}.csv";
         return File(csv, "text/csv; charset=utf-8", fileName);
     }
+
+    [HttpGet("issues/{id:int}/export/pdf")]
+    [Produces("application/pdf")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExportIssuePdfAsync(int id)
+    {
+        var pdf = await _exportService.ExportIssueToPdfAsync(id);
+        var fileName = $"issue_{id}.pdf";
+        return File(pdf, "application/pdf", fileName);
+    }
+
+    [HttpGet("projects/{identifier}/issues/export/pdf")]
+    [ProjectMember]
+    [Produces("application/pdf")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ExportIssueListPdfAsync(string identifier, [FromQuery] IssueFilterParams filter)
+    {
+        var pdf = await _exportService.ExportIssueListToPdfAsync(identifier, filter);
+        var fileName = $"issues_{DateTime.UtcNow:yyyy-MM-dd}.pdf";
+        return File(pdf, "application/pdf", fileName);
+    }
 }

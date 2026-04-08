@@ -16,6 +16,7 @@ import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DownloadIcon from '@mui/icons-material/Download';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import CloseIcon from '@mui/icons-material/Close';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
@@ -82,6 +83,7 @@ export default function IssueListPage() {
 
   const [searchInput, setSearchInput] = useState(searchFromUrl);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Saved filter state
   const [saveFilterOpen, setSaveFilterOpen] = useState(false);
@@ -349,6 +351,34 @@ export default function IssueListPage() {
     }
   }, [identifier, searchFromUrl, trackerIdFilter, statusIdFilter, priorityIdFilter, assignedToIdFilter]);
 
+  const handleExportPdf = useCallback(async () => {
+    if (!identifier) return;
+    setIsExportingPdf(true);
+    try {
+      const exportParams: Record<string, string | number | undefined> = {
+        search: searchFromUrl || undefined,
+        trackerId: trackerIdFilter ? Number(trackerIdFilter) : undefined,
+        statusId: statusIdFilter ? Number(statusIdFilter) : undefined,
+        priorityId: priorityIdFilter ? Number(priorityIdFilter) : undefined,
+        assignedToId: assignedToIdFilter ? Number(assignedToIdFilter) : undefined,
+      };
+      const response = await axiosInstance.get(
+        `/projects/${identifier}/issues/export/pdf`,
+        { params: exportParams, responseType: 'blob' },
+      );
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `issues_${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch {
+      // error handled by axios interceptor
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }, [identifier, searchFromUrl, trackerIdFilter, statusIdFilter, priorityIdFilter, assignedToIdFilter]);
+
   const sortDirection = sortDesc ? 'desc' : 'asc';
 
   const columns: Array<{ field: SortField; label: string; minWidth?: number }> = [
@@ -397,6 +427,16 @@ export default function IssueListPage() {
                   disabled={isExporting}
                 >
                   {isExporting ? <CircularProgress size={20} /> : <DownloadIcon />}
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="PDF 내보내기">
+              <span>
+                <IconButton
+                  onClick={handleExportPdf}
+                  disabled={isExportingPdf}
+                >
+                  {isExportingPdf ? <CircularProgress size={20} /> : <PictureAsPdfIcon />}
                 </IconButton>
               </span>
             </Tooltip>
