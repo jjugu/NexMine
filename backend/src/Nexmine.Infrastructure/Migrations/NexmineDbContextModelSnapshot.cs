@@ -518,7 +518,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDefault = false,
-                            Name = "Low",
+                            Name = "낮음",
                             Position = 1,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -527,7 +527,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 2,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDefault = true,
-                            Name = "Normal",
+                            Name = "보통",
                             Position = 2,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -536,7 +536,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 3,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDefault = false,
-                            Name = "High",
+                            Name = "높음",
                             Position = 3,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -545,7 +545,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 4,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDefault = false,
-                            Name = "Urgent",
+                            Name = "긴급",
                             Position = 4,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -554,7 +554,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 5,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDefault = false,
-                            Name = "Immediate",
+                            Name = "즉시",
                             Position = 5,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
@@ -631,7 +631,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsClosed = false,
-                            Name = "New",
+                            Name = "신규",
                             Position = 1,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -640,7 +640,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 2,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsClosed = false,
-                            Name = "InProgress",
+                            Name = "진행 중",
                             Position = 2,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -649,7 +649,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 3,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsClosed = false,
-                            Name = "Resolved",
+                            Name = "해결됨",
                             Position = 3,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -658,7 +658,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 4,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsClosed = false,
-                            Name = "Feedback",
+                            Name = "피드백",
                             Position = 4,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -667,7 +667,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 5,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsClosed = true,
-                            Name = "Closed",
+                            Name = "종료",
                             Position = 5,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
@@ -1049,7 +1049,7 @@ namespace Nexmine.Infrastructure.Migrations
                         {
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Manager",
+                            Name = "관리자",
                             PermissionsJson = "[\"project.manage\",\"issue.manage\",\"member.manage\"]",
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -1057,7 +1057,7 @@ namespace Nexmine.Infrastructure.Migrations
                         {
                             Id = 2,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Developer",
+                            Name = "개발자",
                             PermissionsJson = "[\"issue.create\",\"issue.edit\",\"issue.comment\"]",
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -1065,7 +1065,7 @@ namespace Nexmine.Infrastructure.Migrations
                         {
                             Id = 3,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Reporter",
+                            Name = "보고자",
                             PermissionsJson = "[\"issue.create\",\"issue.comment\"]",
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
@@ -1236,7 +1236,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDefault = true,
-                            Name = "Bug",
+                            Name = "버그",
                             Position = 1,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -1245,7 +1245,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 2,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDefault = false,
-                            Name = "Feature",
+                            Name = "기능",
                             Position = 2,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -1254,7 +1254,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 3,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDefault = false,
-                            Name = "Task",
+                            Name = "작업",
                             Position = 3,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -1263,7 +1263,7 @@ namespace Nexmine.Infrastructure.Migrations
                             Id = 4,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDefault = false,
-                            Name = "Support",
+                            Name = "지원",
                             Position = 4,
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
