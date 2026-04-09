@@ -147,6 +147,15 @@ public class ProjectService : IProjectService
             return null;
         }
 
+        if (request.Identifier is not null && request.Identifier != project.Identifier)
+        {
+            var duplicate = await _dbContext.Projects
+                .AnyAsync(p => p.Identifier == request.Identifier && p.Id != project.Id);
+            if (duplicate)
+                throw new InvalidOperationException("이미 사용 중인 식별자입니다.");
+            project.Identifier = request.Identifier;
+        }
+
         if (request.Name is not null)
             project.Name = request.Name;
 

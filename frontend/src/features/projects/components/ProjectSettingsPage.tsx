@@ -51,6 +51,7 @@ function fetchCategories(identifier: string) {
 
 const projectInfoSchema = z.object({
   name: z.string().min(1, '프로젝트 이름을 입력해주세요').max(100, '이름은 100자 이하여야 합니다'),
+  identifier: z.string().min(2, '식별자는 최소 2자 이상').max(100).regex(/^[a-z0-9][a-z0-9-]*$/, '영문 소문자, 숫자, 하이픈만 사용 가능'),
   description: z.string().optional(),
   isPublic: z.boolean(),
 });
@@ -68,6 +69,7 @@ type AddMemberFormData = z.infer<typeof addMemberSchema>;
 
 function ProjectInfoSection({ identifier }: { identifier: string }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [serverError, setServerError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -88,20 +90,25 @@ function ProjectInfoSection({ identifier }: { identifier: string }) {
     resolver: zodResolver(projectInfoSchema),
     values: {
       name: project?.name ?? '',
+      identifier: project?.identifier ?? '',
       description: project?.description ?? '',
       isPublic: project?.isPublic ?? true,
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: UpdateProjectRequest) =>
-      axiosInstance.put(`/Projects/${identifier}`, data).then((r) => r.data),
-    onSuccess: () => {
+    mutationFn: (data: UpdateProjectRequest & { _newIdentifier?: string }) =>
+      axiosInstance.put(`/Projects/${identifier}`, data).then((r) => ({ ...r.data, _newIdentifier: data._newIdentifier })),
+    onSuccess: (result: { _newIdentifier?: string }) => {
       setSuccessMsg('프로젝트 정보가 저장되었습니다.');
       setServerError(null);
-      queryClient.invalidateQueries({ queryKey: ['project-settings', identifier] });
-      queryClient.invalidateQueries({ queryKey: ['project', identifier] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      if (result._newIdentifier && result._newIdentifier !== identifier) {
+        navigate(`/projects/${result._newIdentifier}/settings`, { replace: true });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['project-settings', identifier] });
+        queryClient.invalidateQueries({ queryKey: ['project', identifier] });
+      }
     },
     onError: (err: unknown) => {
       const axiosError = err as { response?: { status?: number; data?: { detail?: string; title?: string } } };
@@ -123,8 +130,10 @@ function ProjectInfoSection({ identifier }: { identifier: string }) {
     setSuccessMsg(null);
     updateMutation.mutate({
       name: data.name,
+      identifier: data.identifier !== identifier ? data.identifier : undefined,
       description: data.description || null,
       isPublic: data.isPublic,
+      _newIdentifier: data.identifier,
     });
   }
 
@@ -148,6 +157,15 @@ function ProjectInfoSection({ identifier }: { identifier: string }) {
               error={!!errors.name}
               helperText={errors.name?.message}
               {...register('name')}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              label="식별자 *"
+              fullWidth
+              error={!!errors.identifier}
+              helperText={errors.identifier?.message || '영문 소문자, 숫자, 하이픈(-) 사용. URL 경로에 사용됩니다.'}
+              {...register('identifier')}
             />
           </Grid>
           <Grid size={{ xs: 12 }}>
