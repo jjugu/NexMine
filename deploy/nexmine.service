@@ -22,7 +22,7 @@ User=nexmine
 Group=nexmine
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=/opt/nexmine/data /opt/nexmine/uploads
+ReadWritePaths=/opt/nexmine/data /opt/nexmine/uploads /tmp
 
 # 로깅
 StandardOutput=journal

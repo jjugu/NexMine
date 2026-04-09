@@ -19,6 +19,13 @@ public class ExportService : IExportService
     static ExportService()
     {
         QuestPDF.Settings.License = LicenseType.Community;
+
+        // systemd ProtectSystem=strict 환경에서 기본 temp 경로 접근 불가 대응
+        var tempPath = Path.Combine(Path.GetTempPath(), "questpdf");
+        if (!Directory.Exists(tempPath))
+            try { Directory.CreateDirectory(tempPath); } catch { /* ignore */ }
+        if (Directory.Exists(tempPath))
+            QuestPDF.Settings.TemporaryStoragePath = tempPath;
     }
 
     public ExportService(NexmineDbContext dbContext)
