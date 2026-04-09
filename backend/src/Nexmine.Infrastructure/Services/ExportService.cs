@@ -412,14 +412,24 @@ public class ExportService : IExportService
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var totalDays = chartEnd.DayNumber - chartStart.DayNumber + 1;
 
-        // Tracker colors
-        var trackerColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
+        // Tracker colors - ID/index 기반 팔레트 (이름 변경에 영향 없음)
+        var colorPalette = new[]
         {
-            ["버그"] = Color.FromHex("#ef5350"),
-            ["기능"] = Color.FromHex("#42a5f5"),
-            ["작업"] = Color.FromHex("#66bb6a"),
-            ["지원"] = Color.FromHex("#ffa726"),
+            Color.FromHex("#ef5350"), // 빨강
+            Color.FromHex("#42a5f5"), // 파랑
+            Color.FromHex("#66bb6a"), // 초록
+            Color.FromHex("#ffa726"), // 주황
+            Color.FromHex("#ab47bc"), // 보라
+            Color.FromHex("#26c6da"), // 청록
+            Color.FromHex("#ec407a"), // 분홍
+            Color.FromHex("#8d6e63"), // 갈색
         };
+        var trackerColorMap = issues
+            .Select(i => i.Tracker?.Id ?? 0)
+            .Distinct()
+            .Order()
+            .Select((id, idx) => (id, color: colorPalette[idx % colorPalette.Length]))
+            .ToDictionary(x => x.id, x => x.color);
         var defaultBarColor = Color.FromHex("#90a4ae");
         var progressBarColor = Color.FromHex("#1b5e20");
 
@@ -488,8 +498,8 @@ public class ExportService : IExportService
                             : issue.Subject;
                         var durationDays = issue.DueDate!.Value.DayNumber - issue.StartDate!.Value.DayNumber + 1;
 
-                        var trackerName = issue.Tracker?.Name ?? "";
-                        var barColor = trackerColors.GetValueOrDefault(trackerName, defaultBarColor);
+                        var trackerId = issue.Tracker?.Id ?? 0;
+                        var barColor = trackerColorMap.GetValueOrDefault(trackerId, defaultBarColor);
 
                         table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(2).AlignMiddle()
                             .Text(issue.Id.ToString()).FontSize(7);
