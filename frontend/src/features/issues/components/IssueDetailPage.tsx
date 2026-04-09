@@ -695,6 +695,59 @@ function WatcherSection({ issueId, members }: { issueId: number; members: Projec
   );
 }
 
+// ---------- inline done ratio ----------
+function InlineDoneRatio({ issueId, value, identifier }: { issueId: number; value: number; identifier: string }) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => { setDraft(value); }, [value]);
+
+  const mutation = useMutation({
+    mutationFn: (doneRatio: number) =>
+      axiosInstance.put(`/Issues/${issueId}`, { doneRatio }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issue', issueId] });
+      queryClient.invalidateQueries({ queryKey: ['journals', issueId] });
+      queryClient.invalidateQueries({ queryKey: ['issues', identifier] });
+      setEditing(false);
+    },
+  });
+
+  if (!editing) {
+    return (
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', '&:hover': { opacity: 0.7 } }}
+        onClick={() => setEditing(true)}
+        title="클릭하여 진행률 수정"
+      >
+        <LinearProgress variant="determinate" value={value} sx={{ flex: 1, height: 6, borderRadius: 3 }} />
+        <Typography variant="body2">{value}%</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Slider
+        size="small"
+        value={draft}
+        onChange={(_, v) => setDraft(v as number)}
+        onChangeCommitted={(_, v) => mutation.mutate(v as number)}
+        step={10}
+        min={0}
+        max={100}
+        valueLabelDisplay="auto"
+        sx={{ flex: 1 }}
+      />
+      <Typography variant="body2" sx={{ minWidth: 32 }}>{draft}%</Typography>
+      <IconButton size="small" onClick={() => setEditing(false)}>
+        <CloseIcon fontSize="small" />
+      </IconButton>
+    </Box>
+  );
+}
+
 // ---------- main component ----------
 export default function IssueDetailPage() {
   const { identifier, id } = useParams<{ identifier: string; id: string }>();
@@ -1478,14 +1531,11 @@ export default function IssueDetailPage() {
               </Grid>
               <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                 <Typography variant="caption" color="text.secondary">진행률</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={issue.doneRatio ?? 0}
-                    sx={{ flex: 1, height: 6, borderRadius: 3 }}
-                  />
-                  <Typography variant="body2">{issue.doneRatio ?? 0}%</Typography>
-                </Box>
+                <InlineDoneRatio
+                  issueId={issueId}
+                  value={issue.doneRatio ?? 0}
+                  identifier={identifier!}
+                />
               </Grid>
               <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                 <Typography variant="caption" color="text.secondary">생성일</Typography>
