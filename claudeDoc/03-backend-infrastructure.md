@@ -78,3 +78,5 @@ public static class DependencyInjection
 |------|-----------|------|--------|-----------|
 | 2026-04-09 | `UseUrls("http://localhost:5000")` 하드코딩으로 프로덕션 포트 변경 불가 | `UseUrls()`가 `ASPNETCORE_URLS` 환경변수 및 `--urls` CLI 인자보다 우선 적용 | `UseUrls()` 제거, systemd에서 `--urls` CLI 인자로 포트 제어 | Kestrel 포트는 코드에 하드코딩 금지, 환경변수 또는 CLI 인자로만 설정 |
 | 2026-04-09 | ExportService 트래커 색상이 이름 변경 시 기본색으로 표시 | 트래커 이름 기반 딕셔너리로 색상 매핑 → 이름 변경 시 매칭 실패 | 이름 대신 트래커 ID 기반 색상 팔레트로 변경 | PDF 내보내기 등에서 엔티티 이름 기반 매핑 금지, ID 또는 인덱스 기반 사용 |
+| 2026-04-09 | QuestPDF 임시 저장 경로 못 찾아 PDF 생성 실패 | systemd `ProtectSystem=strict`로 기본 temp 디렉터리 접근 불가 | `ReadWritePaths`에 `/tmp` 추가 + `TemporaryStoragePath` 명시 설정 | systemd strict 모드에서는 temp 경로를 `ReadWritePaths`에 추가하고 라이브러리에도 명시 |
+| 2026-04-09 | PDF 내보내기 시 한글 깨짐 (□□□) | 서버에 CJK 폰트 미설치 + QuestPDF DefaultTextStyle에 폰트 미지정 | `fonts-noto-cjk` 설치 + `FontFamily("Noto Sans CJK KR")` 명시 | 프로덕션 서버 배포 시 한글 폰트 설치 필수, PDF 생성에 CJK 폰트 명시 |
