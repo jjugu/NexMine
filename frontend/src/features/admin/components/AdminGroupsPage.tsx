@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Button, TextField,
@@ -13,6 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GroupIcon from '@mui/icons-material/Group';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import axiosInstance from '../../../api/axiosInstance';
 import type {
   UserGroupDto,
@@ -29,6 +31,7 @@ export default function AdminGroupsPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editGroup, setEditGroup] = useState<UserGroupDto | null>(null);
@@ -275,6 +278,15 @@ export default function AdminGroupsPage() {
                     />
                   </Box>
                   <Box>
+                    <Tooltip title="대시보드">
+                      <IconButton
+                        size="small"
+                        color="info"
+                        onClick={() => navigate(`/admin/groups/${group.id}/dashboard`)}
+                      >
+                        <DashboardIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <IconButton size="small" onClick={() => openEdit(group)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
@@ -299,7 +311,7 @@ export default function AdminGroupsPage() {
                 <TableCell>그룹명</TableCell>
                 <TableCell>설명</TableCell>
                 <TableCell align="center">멤버 수</TableCell>
-                <TableCell align="center" sx={{ width: 120 }}>
+                <TableCell align="center" sx={{ width: 160 }}>
                   작업
                 </TableCell>
               </TableRow>
@@ -333,6 +345,15 @@ export default function AdminGroupsPage() {
                     />
                   </TableCell>
                   <TableCell align="center">
+                    <Tooltip title="대시보드">
+                      <IconButton
+                        size="small"
+                        color="info"
+                        onClick={() => navigate(`/admin/groups/${group.id}/dashboard`)}
+                      >
+                        <DashboardIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <IconButton size="small" onClick={() => openEdit(group)}>
                       <EditIcon fontSize="small" />
                     </IconButton>

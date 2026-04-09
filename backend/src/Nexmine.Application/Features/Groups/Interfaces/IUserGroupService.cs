@@ -11,4 +11,5 @@ public interface IUserGroupService
     Task<bool> DeleteAsync(int id);
     Task AddMembersAsync(int groupId, int[] userIds);
     Task RemoveMemberAsync(int groupId, int userId);
+    Task<GroupDashboardDto?> GetDashboardAsync(int groupId, int userId, DateOnly? from, DateOnly? to);
 }

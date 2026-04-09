@@ -19,5 +19,10 @@ public class UserGroupConfiguration : IEntityTypeConfiguration<UserGroup>
 
         builder.HasIndex(g => g.Name)
             .IsUnique();
+
+        builder.HasOne(g => g.Admin)
+            .WithMany()
+            .HasForeignKey(g => g.AdminUserId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nexmine.Api.Extensions;
 using Nexmine.Application.Features.Groups.Dtos;
 using Nexmine.Application.Features.Groups.Interfaces;
 
@@ -111,5 +112,39 @@ public class AdminGroupsController : ControllerBase
     {
         await _userGroupService.RemoveMemberAsync(id, userId);
         return NoContent();
+    }
+
+    [HttpGet("{id:int}/dashboard")]
+    [ProducesResponseType(typeof(GroupDashboardDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetDashboardAsync(int id, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to)
+    {
+        try
+        {
+            var currentUserId = User.GetUserId();
+            var dashboard = await _userGroupService.GetDashboardAsync(id, currentUserId, from, to);
+
+            if (dashboard is null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "찾을 수 없음",
+                    Detail = "그룹을 찾을 수 없습니다."
+                });
+            }
+
+            return Ok(dashboard);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "접근 거부",
+                Detail = ex.Message
+            });
+        }
     }
 }
