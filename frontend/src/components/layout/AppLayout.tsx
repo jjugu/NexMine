@@ -58,6 +58,13 @@ import RealtimeNotifications from '../common/RealtimeNotifications';
 const DRAWER_WIDTH = 240;
 const DRAWER_COLLAPSED_WIDTH = 56;
 
+const sidebarTextSx = (open: boolean) => ({
+  opacity: open ? 1 : 0,
+  transition: 'opacity 0.15s ease',
+  whiteSpace: 'nowrap' as const,
+  overflow: 'hidden',
+});
+
 const navItems = [
   { labelKey: 'nav.dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { labelKey: 'nav.myPage', icon: <DashboardCustomizeIcon />, path: '/my/page' },
@@ -250,11 +257,11 @@ export default function AppLayout() {
 
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ justifyContent: sidebarOpen ? 'space-between' : 'center', px: sidebarOpen ? 2 : 0.5, minHeight: 48 }}>
+      <Toolbar sx={{ justifyContent: sidebarOpen ? 'space-between' : 'center', px: sidebarOpen ? 2 : 0.5, minHeight: 48, overflow: 'hidden', whiteSpace: 'nowrap' }}>
         {sidebarOpen ? (
           <>
             <Box
-              sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }}
+              sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1, opacity: sidebarOpen ? 1 : 0, transition: 'opacity 0.15s ease', overflow: 'hidden', whiteSpace: 'nowrap' }}
               onClick={() => {
                 navigate('/dashboard');
                 if (isMobile) setMobileOpen(false);
@@ -318,7 +325,7 @@ export default function AppLayout() {
               sx={{ borderRadius: 1, mb: 0.5, justifyContent: sidebarOpen ? 'initial' : 'center', px: sidebarOpen ? 2 : 1 }}
             >
               <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>{item.icon}</ListItemIcon>
-              {sidebarOpen && <ListItemText primary={t(item.labelKey)} />}
+              <ListItemText primary={t(item.labelKey)} sx={sidebarTextSx(sidebarOpen)} />
             </ListItemButton>
           </Tooltip>
         ))}
@@ -357,12 +364,11 @@ export default function AppLayout() {
                   <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>
                     <FolderIcon fontSize="small" />
                   </ListItemIcon>
-                  {sidebarOpen && (
-                    <ListItemText
-                      primary={fp.name}
-                      primaryTypographyProps={{ variant: 'body2', noWrap: true }}
-                    />
-                  )}
+                  <ListItemText
+                    primary={fp.name}
+                    primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                    sx={sidebarTextSx(sidebarOpen)}
+                  />
                 </ListItemButton>
               </Tooltip>
             ))}
@@ -384,12 +390,11 @@ export default function AppLayout() {
               <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>
                 <ArrowBackIcon fontSize="small" />
               </ListItemIcon>
-              {sidebarOpen && (
-                <ListItemText
-                  primary={projectIdentifier}
-                  primaryTypographyProps={{ variant: 'body2', fontWeight: 600, noWrap: true }}
-                />
-              )}
+              <ListItemText
+                primary={projectIdentifier}
+                primaryTypographyProps={{ variant: 'body2', fontWeight: 600, noWrap: true }}
+                sx={sidebarTextSx(sidebarOpen)}
+              />
             </ListItemButton>
             </Tooltip>
             {projectSubNav.map((item) => (
@@ -406,7 +411,7 @@ export default function AppLayout() {
                 sx={{ borderRadius: 1, mb: 0.5, pl: sidebarOpen ? 2 : 1, justifyContent: sidebarOpen ? 'initial' : 'center', px: sidebarOpen ? 2 : 1 }}
               >
                 <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>{item.icon}</ListItemIcon>
-                {sidebarOpen && <ListItemText primary={t(item.labelKey)} />}
+                <ListItemText primary={t(item.labelKey)} sx={sidebarTextSx(sidebarOpen)} />
               </ListItemButton>
               </Tooltip>
             ))}
@@ -484,7 +489,7 @@ export default function AppLayout() {
                 sx={{ borderRadius: 1, mb: 0.5, pl: sidebarOpen ? 3 : 1, justifyContent: sidebarOpen ? 'initial' : 'center', px: sidebarOpen ? 2 : 1 }}
               >
                 <ListItemIcon sx={{ minWidth: sidebarOpen ? 36 : 'auto', justifyContent: 'center' }}>{item.icon}</ListItemIcon>
-                {sidebarOpen && <ListItemText primary={t(item.labelKey)} />}
+                <ListItemText primary={t(item.labelKey)} sx={sidebarTextSx(sidebarOpen)} />
               </ListItemButton>
               </Tooltip>
             ))}
