@@ -790,7 +790,13 @@ export default function IssueDetailPage() {
       const data = args[0] as { issueId: number; userName: string };
       if (data.issueId !== issueId) return;
       if (data.userName === currentUser?.username) return;
-      setRemoteChangeAlert(data.userName);
+      // 편집 중이 아니면 자동 새로고침, 편집 중이면 알림만
+      if (!isEditing) {
+        queryClient.invalidateQueries({ queryKey: ['issue', issueId] });
+        queryClient.invalidateQueries({ queryKey: ['journals', issueId] });
+      } else {
+        setRemoteChangeAlert(data.userName);
+      }
     });
 
     return () => {
@@ -800,7 +806,7 @@ export default function IssueDetailPage() {
       unsubStoppedEditing();
       unsubChanged();
     };
-  }, [isConnected, on, issueId, currentUser?.username]);
+  }, [isConnected, on, issueId, currentUser?.username, isEditing, queryClient]);
 
   // Reference data
   const trackersQuery = useTrackers();

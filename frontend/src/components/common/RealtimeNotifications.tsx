@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Snackbar, Alert, Box } from '@mui/material';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSignalR } from '../../hooks/useSignalR';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -40,6 +41,7 @@ export default function RealtimeNotifications() {
   const user = useAuthStore((s) => s.user);
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const currentProjectRef = useRef<string | null>(null);
 
@@ -106,6 +108,9 @@ export default function RealtimeNotifications() {
     const unsubUpdated = on('IssueUpdated', (...args: unknown[]) => {
       const data = args[0] as IssueNotification;
       if (data.userName === currentUser) return;
+      // 이슈 목록/상세 자동 갱신
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      queryClient.invalidateQueries({ queryKey: ['issue', data.issueId] });
       addToast(
         `${data.userName}님이 이슈 '#${data.issueId} ${data.subject}'을 수정했습니다`,
         `/projects/${data.projectIdentifier}/issues/${data.issueId}`,
