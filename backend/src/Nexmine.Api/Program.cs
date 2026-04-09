@@ -14,8 +14,8 @@ using Nexmine.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Kestrel
-builder.WebHost.UseUrls("http://localhost:5000");
+// Kestrel - 포트는 ASPNETCORE_URLS 환경변수 또는 --urls 인자로 설정
+// 기본값: http://localhost:5000 (개발), 프로덕션은 systemd에서 --urls로 지정
 
 // File upload limits
 builder.Services.Configure<FormOptions>(options =>

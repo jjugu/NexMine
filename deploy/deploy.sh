@@ -16,7 +16,7 @@ set -euo pipefail
 SERVER_IP="${1:?사용법: ./deploy/deploy.sh <서버IP> [SSH키경로]}"
 SSH_KEY="${2:-~/.ssh/id_rsa}"
 SSH_USER="${3:-ubuntu}"
-SSH_OPTS="-i \"$SSH_KEY\" -o StrictHostKeyChecking=no"
+SSH_OPTS=(-i "$SSH_KEY" -o StrictHostKeyChecking=no)
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend"
@@ -62,10 +62,10 @@ tar czf backend.tar.gz -C backend .
 tar czf frontend.tar.gz -C "$FRONTEND_DIR/dist" .
 
 # SCP로 전송
-scp $SSH_OPTS backend.tar.gz "$SSH_USER@$SERVER_IP:/tmp/"
-scp $SSH_OPTS frontend.tar.gz "$SSH_USER@$SERVER_IP:/tmp/"
-scp $SSH_OPTS "$DEPLOY_DIR/nexmine.conf" "$SSH_USER@$SERVER_IP:/tmp/"
-scp $SSH_OPTS "$DEPLOY_DIR/nexmine.service" "$SSH_USER@$SERVER_IP:/tmp/"
+scp "${SSH_OPTS[@]}" backend.tar.gz "$SSH_USER@$SERVER_IP:/tmp/"
+scp "${SSH_OPTS[@]}" frontend.tar.gz "$SSH_USER@$SERVER_IP:/tmp/"
+scp "${SSH_OPTS[@]}" "$DEPLOY_DIR/nexmine.conf" "$SSH_USER@$SERVER_IP:/tmp/"
+scp "${SSH_OPTS[@]}" "$DEPLOY_DIR/nexmine.service" "$SSH_USER@$SERVER_IP:/tmp/"
 
 echo "파일 전송 완료"
 
@@ -74,7 +74,7 @@ echo "파일 전송 완료"
 # -------------------------------------------------------
 echo "[4/5] 서버에서 배포 실행..."
 
-ssh $SSH_OPTS "$SSH_USER@$SERVER_IP" bash -s << 'REMOTE_SCRIPT'
+ssh "${SSH_OPTS[@]}" "$SSH_USER@$SERVER_IP" bash -s << 'REMOTE_SCRIPT'
 set -euo pipefail
 
 # nexmine 사용자 생성 (없으면)
@@ -85,6 +85,9 @@ fi
 # 서비스 중지
 sudo systemctl stop nexmine 2>/dev/null || true
 
+# 디렉터리 생성
+sudo mkdir -p /opt/nexmine/{backend,frontend,data,uploads}
+
 # 백엔드 배포
 sudo rm -rf /opt/nexmine/backend/*
 sudo tar xzf /tmp/backend.tar.gz -C /opt/nexmine/backend/
@@ -92,10 +95,6 @@ sudo tar xzf /tmp/backend.tar.gz -C /opt/nexmine/backend/
 # 프론트엔드 배포
 sudo rm -rf /opt/nexmine/frontend/*
 sudo tar xzf /tmp/frontend.tar.gz -C /opt/nexmine/frontend/
-
-# 데이터/업로드 디렉터리 확인
-sudo mkdir -p /opt/nexmine/data
-sudo mkdir -p /opt/nexmine/uploads
 
 # 권한 설정
 sudo chown -R nexmine:nexmine /opt/nexmine
@@ -147,7 +146,7 @@ echo "=== 배포 완료 ==="
 echo "접속: http://$SERVER_IP:9090"
 echo ""
 echo "유용한 명령어:"
-echo "  ssh $SSH_OPTS $SSH_USER@$SERVER_IP"
+echo "  ssh -i \"$SSH_KEY\" $SSH_USER@$SERVER_IP"
 echo "  sudo journalctl -u nexmine -f         # 백엔드 로그"
 echo "  sudo systemctl restart nexmine         # 백엔드 재시작"
 echo "  sudo systemctl restart nginx           # Nginx 재시작"
