@@ -589,14 +589,14 @@ public class IssueService : IIssueService
             var newStatus = await _dbContext.IssueStatuses.FindAsync(request.StatusId.Value)
                 ?? throw new KeyNotFoundException("상태를 찾을 수 없습니다.");
 
-            var oldStatusId = issue.StatusId.ToString();
+            var oldStatusName = (await _dbContext.IssueStatuses.FindAsync(issue.StatusId))?.Name;
             issue.StatusId = request.StatusId.Value;
 
             journalDetails.Add(new JournalDetail
             {
                 PropertyName = nameof(Issue.StatusId),
-                OldValue = oldStatusId,
-                NewValue = issue.StatusId.ToString()
+                OldValue = oldStatusName,
+                NewValue = newStatus.Name
             });
 
             // Auto DoneRatio=100 when status changes to IsClosed=true
@@ -748,11 +748,15 @@ public class IssueService : IIssueService
                 int? newVersionId = request.VersionId.Value == 0 ? null : request.VersionId.Value;
                 if (newVersionId != issue.VersionId)
                 {
+                    var oldVName = issue.VersionId.HasValue
+                        ? (await _dbContext.Versions.FindAsync(issue.VersionId.Value))?.Name : null;
+                    var newVName = newVersionId.HasValue
+                        ? (await _dbContext.Versions.FindAsync(newVersionId.Value))?.Name : null;
                     journalDetails.Add(new JournalDetail
                     {
                         PropertyName = nameof(Issue.VersionId),
-                        OldValue = issue.VersionId?.ToString(),
-                        NewValue = newVersionId?.ToString()
+                        OldValue = oldVName,
+                        NewValue = newVName
                     });
                     issue.VersionId = newVersionId;
                 }
@@ -764,11 +768,15 @@ public class IssueService : IIssueService
                 int? newCategoryId = request.CategoryId.Value == 0 ? null : request.CategoryId.Value;
                 if (newCategoryId != issue.CategoryId)
                 {
+                    var oldCName = issue.CategoryId.HasValue
+                        ? (await _dbContext.IssueCategories.FindAsync(issue.CategoryId.Value))?.Name : null;
+                    var newCName = newCategoryId.HasValue
+                        ? (await _dbContext.IssueCategories.FindAsync(newCategoryId.Value))?.Name : null;
                     journalDetails.Add(new JournalDetail
                     {
                         PropertyName = nameof(Issue.CategoryId),
-                        OldValue = issue.CategoryId?.ToString(),
-                        NewValue = newCategoryId?.ToString()
+                        OldValue = oldCName,
+                        NewValue = newCName
                     });
                     issue.CategoryId = newCategoryId;
                 }
