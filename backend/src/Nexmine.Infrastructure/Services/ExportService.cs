@@ -194,7 +194,7 @@ public class ExportService : IExportService
                 page.Size(PageSizes.A4);
                 page.MarginHorizontal(40);
                 page.MarginVertical(30);
-                page.DefaultTextStyle(x => x.FontSize(10));
+                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Noto Sans CJK KR"));
 
                 page.Header().Text($"#{issue.Id} {issue.Subject}")
                     .FontSize(16).Bold();
@@ -324,7 +324,7 @@ public class ExportService : IExportService
                 page.Size(PageSizes.A4.Landscape());
                 page.MarginHorizontal(30);
                 page.MarginVertical(20);
-                page.DefaultTextStyle(x => x.FontSize(9));
+                page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Noto Sans CJK KR"));
 
                 page.Header().Column(col =>
                 {
@@ -450,7 +450,7 @@ public class ExportService : IExportService
                 page.Size(PageSizes.A3.Landscape());
                 page.MarginHorizontal(20);
                 page.MarginVertical(15);
-                page.DefaultTextStyle(x => x.FontSize(8));
+                page.DefaultTextStyle(x => x.FontSize(8).FontFamily("Noto Sans CJK KR"));
 
                 page.Header().Column(col =>
                 {
