@@ -415,10 +415,10 @@ public class ExportService : IExportService
         // Tracker colors
         var trackerColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Bug"] = Color.FromHex("#ef5350"),
-            ["Feature"] = Color.FromHex("#42a5f5"),
-            ["Task"] = Color.FromHex("#66bb6a"),
-            ["Support"] = Color.FromHex("#ffa726"),
+            ["버그"] = Color.FromHex("#ef5350"),
+            ["기능"] = Color.FromHex("#42a5f5"),
+            ["작업"] = Color.FromHex("#66bb6a"),
+            ["지원"] = Color.FromHex("#ffa726"),
         };
         var defaultBarColor = Color.FromHex("#90a4ae");
         var progressBarColor = Color.FromHex("#1b5e20");
