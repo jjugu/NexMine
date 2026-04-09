@@ -101,6 +101,7 @@ sudo chown -R nexmine:nexmine /opt/nexmine
 
 # Nginx 설정 (기존 사이트 건드리지 않음, nexmine 설정만 추가)
 sudo cp /tmp/nexmine.conf /etc/nginx/conf.d/nexmine.conf
+sudo nginx -t 2>/dev/null && sudo systemctl reload nginx || echo "Nginx config 검증 실패, 수동 확인 필요"
 
 # systemd 서비스 설정
 sudo cp /tmp/nexmine.service /etc/systemd/system/nexmine.service
@@ -127,7 +128,6 @@ fi
 
 # 서비스 시작
 sudo systemctl start nexmine
-sudo systemctl reload nginx
 
 echo ""
 echo "=== 서비스 상태 확인 ==="
