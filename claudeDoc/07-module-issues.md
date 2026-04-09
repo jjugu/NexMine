@@ -57,4 +57,4 @@ DoneRatio, EstimatedHours, IsPrivate
 
 | 날짜 | 오류 내용 | 원인 | 해결책 | 방지 규칙 |
 |------|-----------|------|--------|-----------|
-| - | - | - | - | - |
+| 2026-04-09 | 이슈 상태 변경 시 Journal에 이름 대신 숫자 ID 저장 (상태 1→2) | `UpdatePositionAsync`에서 `issue.StatusId.ToString()`으로 ID를 문자열화하여 저장 | `FindAsync`로 이름 조회 후 Name을 저장하도록 수정 | Journal OldValue/NewValue에 FK ID 저장 금지, 반드시 이름(Name)으로 해석하여 저장 |
