@@ -345,12 +345,13 @@ function AddMemberDialog({
     defaultValues: { userId: 0, roleId: 0 },
   });
 
-  // Simple role options (common Redmine-style roles)
-  const roleOptions = [
-    { id: 3, name: '관리자' },
-    { id: 4, name: '개발자' },
-    { id: 5, name: '보고자' },
-  ];
+  // Fetch roles from API
+  const rolesQuery = useQuery({
+    queryKey: ['admin-roles'],
+    queryFn: () => axiosInstance.get<{ id: number; name: string }[]>('/admin/roles').then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const roleOptions = rolesQuery.data ?? [];
 
   const addMutation = useMutation({
     mutationFn: (data: AddMemberFormData) =>
