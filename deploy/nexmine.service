@@ -1,0 +1,33 @@
+# /etc/systemd/system/nexmine.service
+# Nexmine Backend - systemd 서비스
+
+[Unit]
+Description=Nexmine Backend API
+After=network.target
+
+[Service]
+Type=exec
+WorkingDirectory=/opt/nexmine/backend
+ExecStart=/usr/bin/dotnet /opt/nexmine/backend/Nexmine.Api.dll
+Restart=always
+RestartSec=5
+
+# 환경변수
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://localhost:5100
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+# 보안 설정
+User=nexmine
+Group=nexmine
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/nexmine/data /opt/nexmine/uploads
+
+# 로깅
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nexmine
+
+[Install]
+WantedBy=multi-user.target

@@ -32,7 +32,8 @@ builder.Services.AddDbContext<NexmineDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Uploads directory
-var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, "uploads");
+var uploadsPath = builder.Configuration["UploadsPath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "uploads");
 if (!Directory.Exists(uploadsPath))
     Directory.CreateDirectory(uploadsPath);
 
@@ -124,7 +125,9 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
+            ?? ["http://localhost:5173"];
+        policy.WithOrigins(origins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -133,8 +136,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Auto-migrate in development
-if (app.Environment.IsDevelopment())
+// Auto-migrate
+var autoMigrate = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue<bool>("AutoMigrate");
+
+if (autoMigrate)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<NexmineDbContext>();
@@ -149,7 +155,10 @@ if (app.Environment.IsDevelopment())
         admin.PasswordHash = passwordHashService.Hash("admin");
         db.SaveChanges();
     }
+}
 
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI();
 }

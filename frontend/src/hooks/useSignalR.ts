@@ -7,7 +7,7 @@ import {
 } from '@microsoft/signalr';
 import { useAuthStore } from '../stores/authStore';
 
-const HUB_URL = 'http://localhost:5000/hubs/nexmine';
+const HUB_URL = '/hubs/nexmine';
 
 // Singleton connection instance
 let connection: HubConnection | null = null;
