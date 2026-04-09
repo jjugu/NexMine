@@ -98,6 +98,7 @@ export default function AdminRolesPage() {
         : axiosInstance.post('/admin/roles', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
       closeDialog();
     },
     onError: (err: unknown) => {
@@ -110,6 +111,7 @@ export default function AdminRolesPage() {
     mutationFn: (id: number) => axiosInstance.delete(`/admin/roles/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
       setDeleteConfirm(null);
     },
     onError: (err: unknown) => {

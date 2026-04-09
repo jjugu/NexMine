@@ -48,6 +48,7 @@ export default function AdminPrioritiesPage() {
         : axiosInstance.post('/admin/issue-priorities', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-priorities'] });
+      queryClient.invalidateQueries({ queryKey: ['issue-priorities'] });
       closeDialog();
     },
     onError: (err: unknown) => {
@@ -60,6 +61,7 @@ export default function AdminPrioritiesPage() {
     mutationFn: (id: number) => axiosInstance.delete(`/admin/issue-priorities/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-priorities'] });
+      queryClient.invalidateQueries({ queryKey: ['issue-priorities'] });
       setDeleteConfirm(null);
     },
     onError: (err: unknown) => {
@@ -79,6 +81,7 @@ export default function AdminPrioritiesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-priorities'] });
+      queryClient.invalidateQueries({ queryKey: ['issue-priorities'] });
     },
   });
 

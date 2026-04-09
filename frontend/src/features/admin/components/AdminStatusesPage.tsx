@@ -48,6 +48,7 @@ export default function AdminStatusesPage() {
         : axiosInstance.post('/admin/issue-statuses', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-statuses'] });
+      queryClient.invalidateQueries({ queryKey: ['issue-statuses'] });
       closeDialog();
     },
     onError: (err: unknown) => {
@@ -60,6 +61,7 @@ export default function AdminStatusesPage() {
     mutationFn: (id: number) => axiosInstance.delete(`/admin/issue-statuses/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-statuses'] });
+      queryClient.invalidateQueries({ queryKey: ['issue-statuses'] });
       setDeleteConfirm(null);
     },
     onError: (err: unknown) => {
@@ -79,6 +81,7 @@ export default function AdminStatusesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-statuses'] });
+      queryClient.invalidateQueries({ queryKey: ['issue-statuses'] });
     },
   });
 

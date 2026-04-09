@@ -14,7 +14,7 @@ export function useTrackers() {
     queryKey: ['trackers'],
     queryFn: () =>
       axiosInstance.get<TrackerDto[]>('/Trackers').then((res) => res.data),
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -25,7 +25,7 @@ export function useIssueStatuses() {
       axiosInstance
         .get<IssueStatusDto[]>('/issue-statuses')
         .then((res) => res.data),
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -36,7 +36,7 @@ export function useIssuePriorities() {
       axiosInstance
         .get<IssuePriorityDto[]>('/issue-priorities')
         .then((res) => res.data),
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

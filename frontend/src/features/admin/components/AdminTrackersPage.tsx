@@ -48,6 +48,7 @@ export default function AdminTrackersPage() {
         : axiosInstance.post('/admin/trackers', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-trackers'] });
+      queryClient.invalidateQueries({ queryKey: ['trackers'] });
       closeDialog();
     },
     onError: (err: unknown) => {
@@ -60,6 +61,7 @@ export default function AdminTrackersPage() {
     mutationFn: (id: number) => axiosInstance.delete(`/admin/trackers/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-trackers'] });
+      queryClient.invalidateQueries({ queryKey: ['trackers'] });
       setDeleteConfirm(null);
     },
     onError: (err: unknown) => {
@@ -79,6 +81,7 @@ export default function AdminTrackersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-trackers'] });
+      queryClient.invalidateQueries({ queryKey: ['trackers'] });
     },
   });
 
