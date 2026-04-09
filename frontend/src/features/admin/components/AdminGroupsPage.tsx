@@ -25,6 +25,7 @@ import type {
 interface GroupFormData {
   name: string;
   description: string;
+  adminUserId?: number | null;
 }
 
 export default function AdminGroupsPage() {
@@ -41,6 +42,8 @@ export default function AdminGroupsPage() {
 
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
+  const [formAdmin, setFormAdmin] = useState<AdminUserDto | null>(null);
+  const [adminSearchInput, setAdminSearchInput] = useState('');
 
   // Member add state
   const [memberSearchInput, setMemberSearchInput] = useState('');
@@ -61,6 +64,18 @@ export default function AdminGroupsPage() {
         .get<UserGroupDto>(`/admin/groups/${detailGroup!.id}`)
         .then((res) => res.data),
     enabled: !!detailGroup?.id,
+  });
+
+  // Fetch users for admin autocomplete in dialog
+  const { data: adminUsersData } = useQuery({
+    queryKey: ['admin-users-search', adminSearchInput, 'dialog'],
+    queryFn: () =>
+      axiosInstance
+        .get<AdminUserDtoPagedResult>('/admin/users', {
+          params: { search: adminSearchInput || undefined, pageSize: 50 },
+        })
+        .then((res) => res.data),
+    enabled: dialogOpen,
   });
 
   // Fetch users for member autocomplete
@@ -145,6 +160,7 @@ export default function AdminGroupsPage() {
     setEditGroup(null);
     setFormName('');
     setFormDescription('');
+    setFormAdmin(null);
     setFormError('');
     setDialogOpen(true);
   }
@@ -153,6 +169,11 @@ export default function AdminGroupsPage() {
     setEditGroup(group);
     setFormName(group.name ?? '');
     setFormDescription(group.description ?? '');
+    setFormAdmin(
+      group.adminUserId
+        ? { id: group.adminUserId, username: group.adminUserName ?? '', email: '', isAdmin: false, isActive: true } as AdminUserDto
+        : null
+    );
     setFormError('');
     setDialogOpen(true);
   }
@@ -184,7 +205,7 @@ export default function AdminGroupsPage() {
   }
 
   function handleSave() {
-    saveMutation.mutate({ name: formName, description: formDescription });
+    saveMutation.mutate({ name: formName, description: formDescription, adminUserId: formAdmin?.id ?? null });
   }
 
   const renderSkeleton = () => (
@@ -396,6 +417,18 @@ export default function AdminGroupsPage() {
               rows={3}
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
+            />
+            <Autocomplete
+              options={adminUsersData?.items ?? []}
+              getOptionLabel={(o) => `${o.username} (${o.email})`}
+              value={formAdmin}
+              onChange={(_, v) => setFormAdmin(v)}
+              onInputChange={(_, v) => setAdminSearchInput(v)}
+              isOptionEqualToValue={(o, v) => o.id === v.id}
+              renderInput={(params) => (
+                <TextField {...params} label="그룹 관리자" placeholder="사용자 검색..." />
+              )}
+              noOptionsText="검색 결과 없음"
             />
           </Box>
         </DialogContent>
