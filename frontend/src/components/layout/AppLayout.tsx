@@ -379,7 +379,7 @@ export default function AppLayout() {
         {projectIdentifier && projectSubNav.length > 0 && (
           <>
             <Divider sx={{ my: 1 }} />
-            <Tooltip title={!sidebarOpen ? projectIdentifier ?? '' : ''} placement="right">
+            <Tooltip title={!sidebarOpen ? (projectInfoQuery.data?.name ?? projectIdentifier ?? '') : ''} placement="right">
             <ListItemButton
               onClick={() => {
                 navigate(`/projects/${projectIdentifier}`);
@@ -391,7 +391,7 @@ export default function AppLayout() {
                 <ArrowBackIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText
-                primary={projectIdentifier}
+                primary={projectInfoQuery.data?.name ?? projectIdentifier}
                 primaryTypographyProps={{ variant: 'body2', fontWeight: 600, noWrap: true }}
                 sx={sidebarTextSx(sidebarOpen)}
               />
