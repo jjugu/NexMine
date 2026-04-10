@@ -41,7 +41,7 @@ import {
   useCategories, useVersions, useProjectMembers,
 } from '../hooks/useReferenceData';
 import {
-  formatDate, formatDateTime, getPriorityColor,
+  formatDate, formatDateTime,
   PROPERTY_NAME_LABELS, ACTIVITY_TYPE_LABELS,
 } from '../utils/issueUtils';
 
