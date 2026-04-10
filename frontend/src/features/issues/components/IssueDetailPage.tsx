@@ -35,6 +35,7 @@ import type {
 import CopyIssueDialog from './CopyIssueDialog';
 import MoveIssueDialog from './MoveIssueDialog';
 import IssueAttachmentSection from './IssueAttachmentSection';
+import { InlineStatusChip, InlinePriorityChip, InlineTrackerChip } from './InlineIssueFields';
 import {
   useTrackers, useIssueStatuses, useIssuePriorities,
   useCategories, useVersions, useProjectMembers,
@@ -1161,7 +1162,13 @@ export default function IssueDetailPage() {
         {!isEditing ? (
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Chip label={issue.trackerName ?? '트래커'} size="small" variant="outlined" />
+              <InlineTrackerChip
+                issueId={issueId}
+                identifier={identifier!}
+                currentId={issue.trackerId}
+                currentLabel={issue.trackerName ?? '트래커'}
+                trackers={trackers.map((t) => ({ id: t.id!, name: t.name ?? '' }))}
+              />
               <Typography variant="h5" sx={{ fontWeight: 600 }}>
                 #{issue.id} {issue.subject}
               </Typography>
@@ -1487,17 +1494,24 @@ export default function IssueDetailPage() {
               <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                 <Typography variant="caption" color="text.secondary">상태</Typography>
                 <Box>
-                  <Chip label={issue.statusName ?? '-'} size="small" color="success" variant="outlined" />
+                  <InlineStatusChip
+                    issueId={issueId}
+                    identifier={identifier!}
+                    currentId={issue.statusId}
+                    currentLabel={issue.statusName ?? '-'}
+                    allowedStatuses={editableStatuses.map((s) => ({ id: s.id!, name: s.name ?? '' }))}
+                  />
                 </Box>
               </Grid>
               <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                 <Typography variant="caption" color="text.secondary">우선순위</Typography>
                 <Box>
-                  <Chip
-                    label={issue.priorityName ?? '-'}
-                    size="small"
-                    color={getPriorityColor(issue.priorityName)}
-                    variant="outlined"
+                  <InlinePriorityChip
+                    issueId={issueId}
+                    identifier={identifier!}
+                    currentId={issue.priorityId}
+                    currentLabel={issue.priorityName ?? '-'}
+                    priorities={priorities.map((p) => ({ id: p.id!, name: p.name ?? '' }))}
                   />
                 </Box>
               </Grid>
