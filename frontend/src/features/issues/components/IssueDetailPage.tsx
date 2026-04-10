@@ -770,6 +770,7 @@ export default function IssueDetailPage() {
   // --- SignalR realtime collaboration ---
   const { isConnected, on, invoke } = useSignalR();
   const currentUser = useAuthStore((s) => s.user);
+  const currentDisplayName = `${currentUser?.firstName ?? ''} ${currentUser?.lastName ?? ''}`.trim();
 
   interface ActiveUser {
     userId: number;
@@ -827,7 +828,7 @@ export default function IssueDetailPage() {
     const unsubStartedEditing = on('UserStartedEditing', (...args: unknown[]) => {
       const data = args[0] as { issueId: number; userId: number; userName: string };
       if (data.issueId !== issueId) return;
-      if (data.userName === currentUser?.username) return;
+      if (data.userName === currentDisplayName) return;
       setEditingUsers((prev) => {
         if (prev.includes(data.userName)) return prev;
         return [...prev, data.userName];
@@ -843,7 +844,7 @@ export default function IssueDetailPage() {
     const unsubChanged = on('IssueChanged', (...args: unknown[]) => {
       const data = args[0] as { issueId: number; userName: string };
       if (data.issueId !== issueId) return;
-      if (data.userName === currentUser?.username) return;
+      if (data.userName === currentDisplayName) return;
       // 편집 중이 아니면 자동 새로고침, 편집 중이면 알림만
       if (!isEditing) {
         queryClient.invalidateQueries({ queryKey: ['issue', issueId] });
@@ -860,7 +861,7 @@ export default function IssueDetailPage() {
       unsubStoppedEditing();
       unsubChanged();
     };
-  }, [isConnected, on, issueId, currentUser?.username, isEditing, queryClient]);
+  }, [isConnected, on, issueId, currentDisplayName, isEditing, queryClient]);
 
   // Reference data
   const trackersQuery = useTrackers();
@@ -1108,7 +1109,7 @@ export default function IssueDetailPage() {
             현재 조회 중:
           </Typography>
           {activeUsers
-            .filter((u) => u.userName !== currentUser?.username)
+            .filter((u) => u.userName !== currentDisplayName)
             .map((u) => (
               <Chip
                 key={u.connectionId}
