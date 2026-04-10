@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -8,9 +8,12 @@ import {
   Box, Typography, Button, TextField, Alert,
   CircularProgress, Grid, Breadcrumbs, Link,
   MenuItem, Select, FormControl, InputLabel, Slider,
-  FormControlLabel, Switch, Paper, Checkbox, Divider,
+  FormControlLabel, Switch, Paper, Checkbox, Divider, IconButton,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import CloseIcon from '@mui/icons-material/Close';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import axiosInstance from '../../../api/axiosInstance';
@@ -182,6 +185,8 @@ export default function IssueCreatePage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [customValues, setCustomValues] = useState<Record<number, string>>({});
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | ''>('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const trackersQuery = useTrackers();
   const statusesQuery = useIssueStatuses();
@@ -296,7 +301,7 @@ export default function IssueCreatePage() {
   }
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateIssueFormData) => {
+    mutationFn: async (data: CreateIssueFormData) => {
       const customValuesPayload = Object.entries(customValues)
         .filter(([, v]) => v !== '')
         .map(([fieldId, value]) => ({ customFieldId: Number(fieldId), value }));
@@ -313,9 +318,24 @@ export default function IssueCreatePage() {
         doneRatio: data.doneRatio ?? 0,
         customValues: customValuesPayload.length > 0 ? customValuesPayload : undefined,
       };
-      return axiosInstance
+      const issue = await axiosInstance
         .post<IssueDetailDto>(`/projects/${identifier}/issues`, payload)
         .then((res) => res.data);
+
+      // Upload attachments after issue creation
+      if (selectedFiles.length > 0 && issue.id) {
+        for (const file of selectedFiles) {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('attachableType', 'Issue');
+          formData.append('attachableId', String(issue.id));
+          await axiosInstance.post('/attachments', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        }
+      }
+
+      return issue;
     },
     onSuccess: (issue) => {
       queryClient.invalidateQueries({ queryKey: ['issues', identifier] });
@@ -334,6 +354,17 @@ export default function IssueCreatePage() {
   function handleFormSubmit(data: CreateIssueFormData) {
     setServerError(null);
     createMutation.mutate(data);
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+    setSelectedFiles((prev) => [...prev, ...Array.from(files)]);
+    e.target.value = '';
+  }
+
+  function handleRemoveFile(index: number) {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   function handleCancel() {
@@ -676,6 +707,61 @@ export default function IssueCreatePage() {
                 ))}
               </Grid>
             </>
+          )}
+
+          {/* Attachments */}
+          <Divider sx={{ my: 2 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <Typography variant="subtitle2">첨부파일</Typography>
+            <Button
+              size="small"
+              startIcon={<AttachFileIcon />}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              파일 추가
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              hidden
+              onChange={handleFileSelect}
+            />
+          </Box>
+          {selectedFiles.length > 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {selectedFiles.map((file, idx) => (
+                <Box
+                  key={`${file.name}-${idx}`}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    py: 0.5,
+                    px: 1,
+                    borderRadius: 1,
+                    bgcolor: 'action.hover',
+                  }}
+                >
+                  <InsertDriveFileIcon fontSize="small" color="action" />
+                  <Typography variant="body2" sx={{ flex: 1 }}>
+                    {file.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {file.size < 1024 * 1024
+                      ? `${(file.size / 1024).toFixed(1)} KB`
+                      : `${(file.size / (1024 * 1024)).toFixed(1)} MB`}
+                  </Typography>
+                  <IconButton size="small" onClick={() => handleRemoveFile(idx)}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              첨부할 파일이 없습니다.
+            </Typography>
           )}
 
           {/* Actions */}

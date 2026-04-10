@@ -135,6 +135,17 @@ public class AuthController : ControllerBase
         return Ok(user);
     }
 
+    [HttpPut("change-password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request)
+    {
+        var userId = User.GetUserId();
+        await _authService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
+        return NoContent();
+    }
+
     private void SetRefreshTokenCookie(string refreshToken, int expiryDays = 7)
     {
         var cookieOptions = new CookieOptions

@@ -249,7 +249,24 @@ public class AuthService : IAuthService
         {
             AccessToken = accessToken,
             RefreshToken = refreshTokenValue,
-            User = _mapper.Map<UserDto>(user)
+            User = _mapper.Map<UserDto>(user),
+            MustChangePassword = user.MustChangePassword
         };
+    }
+
+    public async Task ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+    {
+        var user = await _dbContext.Users.FindAsync(userId)
+            ?? throw new KeyNotFoundException("사용자를 찾을 수 없습니다.");
+
+        if (!_passwordHashService.Verify(currentPassword, user.PasswordHash))
+            throw new InvalidOperationException("현재 비밀번호가 올바르지 않습니다.");
+
+        if (newPassword.Length < 8)
+            throw new InvalidOperationException("새 비밀번호는 8자 이상이어야 합니다.");
+
+        user.PasswordHash = _passwordHashService.Hash(newPassword);
+        user.MustChangePassword = false;
+        await _dbContext.SaveChangesAsync();
     }
 }

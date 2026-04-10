@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexmine.Application.Features.Groups.Dtos;
 using Nexmine.Application.Features.Groups.Interfaces;
 using Nexmine.Domain.Entities;
+using Nexmine.Domain.Exceptions;
 using Nexmine.Infrastructure.Data;
 
 namespace Nexmine.Infrastructure.Services;
@@ -183,7 +184,7 @@ public class UserGroupService : IUserGroupService
             return null;
 
         if (!requestingUser.IsAdmin && group.AdminUserId != userId)
-            throw new UnauthorizedAccessException("이 그룹의 대시보드에 접근할 권한이 없습니다.");
+            throw new ForbiddenAccessException("이 그룹의 대시보드에 접근할 권한이 없습니다.");
 
         var memberUserIds = group.Members.Select(m => m.UserId).ToList();
 

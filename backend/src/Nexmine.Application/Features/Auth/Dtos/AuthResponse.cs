@@ -6,4 +6,5 @@ public class AuthResponse
     public string? RefreshToken { get; set; }
     public UserDto? User { get; set; }
     public bool RequiresApproval { get; set; }
+    public bool MustChangePassword { get; set; }
 }

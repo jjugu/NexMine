@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexmine.Application.Features.SavedQueries.Dtos;
 using Nexmine.Application.Features.SavedQueries.Interfaces;
 using Nexmine.Domain.Entities;
+using Nexmine.Domain.Exceptions;
 using Nexmine.Infrastructure.Data;
 
 namespace Nexmine.Infrastructure.Services;
@@ -94,7 +95,7 @@ public class SavedQueryService : ISavedQueryService
         // Only the owner or admin can update
         var user = await _dbContext.Users.FindAsync(userId);
         if (savedQuery.UserId != userId && user?.IsAdmin != true)
-            throw new UnauthorizedAccessException("본인의 필터만 수정할 수 있습니다.");
+            throw new ForbiddenAccessException("본인의 필터만 수정할 수 있습니다.");
 
         if (request.Name is not null)
             savedQuery.Name = request.Name;
@@ -127,7 +128,7 @@ public class SavedQueryService : ISavedQueryService
         // Only the owner or admin can delete
         var user = await _dbContext.Users.FindAsync(userId);
         if (savedQuery.UserId != userId && user?.IsAdmin != true)
-            throw new UnauthorizedAccessException("본인의 필터만 삭제할 수 있습니다.");
+            throw new ForbiddenAccessException("본인의 필터만 삭제할 수 있습니다.");
 
         _dbContext.SavedQueries.Remove(savedQuery);
         await _dbContext.SaveChangesAsync();

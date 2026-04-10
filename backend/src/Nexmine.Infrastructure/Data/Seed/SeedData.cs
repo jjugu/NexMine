@@ -48,6 +48,7 @@ public static class SeedData
                 LastName = "Admin",
                 IsAdmin = true,
                 IsActive = true,
+                MustChangePassword = true,
                 CreatedAt = utcNow,
                 UpdatedAt = utcNow
             }

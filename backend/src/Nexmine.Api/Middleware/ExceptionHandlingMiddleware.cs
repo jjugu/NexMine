@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Nexmine.Domain.Exceptions;
 
 namespace Nexmine.Api.Middleware;
 
@@ -32,6 +33,7 @@ public class ExceptionHandlingMiddleware
 
         var (statusCode, title) = exception switch
         {
+            ForbiddenAccessException => (StatusCodes.Status403Forbidden, "Forbidden"),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
             InvalidOperationException => (StatusCodes.Status409Conflict, "Conflict"),
             KeyNotFoundException => (StatusCodes.Status404NotFound, "Not Found"),
