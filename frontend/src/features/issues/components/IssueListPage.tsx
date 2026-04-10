@@ -231,6 +231,7 @@ export default function IssueListPage() {
   const [statusSubMenuAnchor, setStatusSubMenuAnchor] = useState<HTMLElement | null>(null);
   const [assigneeSubMenuAnchor, setAssigneeSubMenuAnchor] = useState<HTMLElement | null>(null);
   const [prioritySubMenuAnchor, setPrioritySubMenuAnchor] = useState<HTMLElement | null>(null);
+  const [trackerSubMenuAnchor, setTrackerSubMenuAnchor] = useState<HTMLElement | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetIssue, setDeleteTargetIssue] = useState<IssueDto | null>(null);
 
@@ -617,6 +618,7 @@ export default function IssueListPage() {
     setStatusSubMenuAnchor(null);
     setAssigneeSubMenuAnchor(null);
     setPrioritySubMenuAnchor(null);
+    setTrackerSubMenuAnchor(null);
   }
 
   function handleContextMenuAction(action: string) {
@@ -658,6 +660,12 @@ export default function IssueListPage() {
   function handlePriorityChange(priorityId: number) {
     if (!contextMenu?.issue?.id) return;
     updateIssueMutation.mutate({ id: contextMenu.issue.id, payload: { priorityId } });
+    handleCloseContextMenu();
+  }
+
+  function handleTrackerChange(trackerId: number) {
+    if (!contextMenu?.issue?.id) return;
+    updateIssueMutation.mutate({ id: contextMenu.issue.id, payload: { trackerId } });
     handleCloseContextMenu();
   }
 
@@ -1183,6 +1191,13 @@ export default function IssueListPage() {
           <ListItemText>우선순위 변경</ListItemText>
           <ArrowRightIcon fontSize="small" sx={{ ml: 1 }} />
         </MenuItem>
+        <MenuItem
+          onClick={(e) => setTrackerSubMenuAnchor(e.currentTarget)}
+        >
+          <ListItemIcon><BugReportIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>트래커 변경</ListItemText>
+          <ArrowRightIcon fontSize="small" sx={{ ml: 1 }} />
+        </MenuItem>
         <Divider />
         <MenuItem onClick={() => handleContextMenuAction('copy')}>
           <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
@@ -1249,6 +1264,25 @@ export default function IssueListPage() {
             selected={contextMenu?.issue?.priorityName === p.name}
           >
             {p.name}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* Tracker sub-menu */}
+      <Menu
+        open={Boolean(trackerSubMenuAnchor)}
+        anchorEl={trackerSubMenuAnchor}
+        onClose={() => setTrackerSubMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      >
+        {(trackersQuery.data ?? []).map((t) => (
+          <MenuItem
+            key={t.id}
+            onClick={() => { if (t.id != null) handleTrackerChange(t.id); }}
+            selected={contextMenu?.issue?.trackerName === t.name}
+          >
+            {t.name}
           </MenuItem>
         ))}
       </Menu>
