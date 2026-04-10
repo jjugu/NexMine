@@ -34,6 +34,7 @@ import type {
 } from '../../../api/generated/model';
 import CopyIssueDialog from './CopyIssueDialog';
 import MoveIssueDialog from './MoveIssueDialog';
+import IssueAttachmentSection from './IssueAttachmentSection';
 import {
   useTrackers, useIssueStatuses, useIssuePriorities,
   useCategories, useVersions, useProjectMembers,
@@ -1587,6 +1588,13 @@ export default function IssueDetailPage() {
       {!isEditing && (
         <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2, md: 3 }, mb: 3 }}>
           <WatcherSection issueId={issueId} members={members} />
+        </Paper>
+      )}
+
+      {/* Attachments */}
+      {!isEditing && (
+        <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2, md: 3 }, mb: 3 }}>
+          <IssueAttachmentSection issueId={issueId} />
         </Paper>
       )}
 

@@ -18,6 +18,16 @@ public class AttachmentsController : ControllerBase
         _attachmentService = attachmentService;
     }
 
+    [HttpGet]
+    [ProducesResponseType(typeof(List<AttachmentDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListAsync(
+        [FromQuery] string attachableType,
+        [FromQuery] int attachableId)
+    {
+        var attachments = await _attachmentService.ListByAttachableAsync(attachableType, attachableId);
+        return Ok(attachments);
+    }
+
     [HttpPost]
     [ProducesResponseType(typeof(AttachmentUploadResult), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
