@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Paper, Skeleton, TablePagination,
@@ -129,6 +129,19 @@ function getApiTypeParam(filter: FilterType): string | undefined {
   return filter;
 }
 
+function parsePositiveInt(value: string | null, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseFilterType(value: string | null): FilterType {
+  if (value === 'issue' || value === 'wiki' || value === 'document') {
+    return value;
+  }
+
+  return 'all';
+}
+
 function fetchProject(identifier: string) {
   return axiosInstance
     .get<{ id?: number; name?: string | null; identifier?: string | null }>(`/Projects/${identifier}`)
@@ -139,6 +152,7 @@ export default function ActivityPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { identifier } = useParams<{ identifier?: string }>();
   const isProjectScope = !!identifier;
 
@@ -149,9 +163,9 @@ export default function ActivityPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const filter = parseFilterType(searchParams.get('filter'));
+  const page = parsePositiveInt(searchParams.get('page'), 1);
+  const pageSize = parsePositiveInt(searchParams.get('pageSize'), 20);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: isProjectScope
@@ -175,25 +189,37 @@ export default function ActivityPage() {
   const totalCount = data?.totalCount ?? 0;
 
   const handleFilterChange = (_: React.MouseEvent<HTMLElement>, newFilter: FilterType | null) => {
-    if (newFilter !== null) {
-      setFilter(newFilter);
-      setPage(1);
+    if (newFilter === null) {
+      return;
     }
+
+    const newParams = new URLSearchParams(searchParams);
+    if (newFilter === 'all') {
+      newParams.delete('filter');
+    } else {
+      newParams.set('filter', newFilter);
+    }
+    newParams.set('page', '1');
+    setSearchParams(newParams, { replace: true });
   };
 
   const handleChangePage = useCallback(
     (_: unknown, newPage: number) => {
-      setPage(newPage + 1);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('page', String(newPage + 1));
+      setSearchParams(newParams);
     },
-    [],
+    [searchParams, setSearchParams],
   );
 
   const handleChangeRowsPerPage = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      setPageSize(parseInt(event.target.value, 10));
-      setPage(1);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('pageSize', event.target.value);
+      newParams.set('page', '1');
+      setSearchParams(newParams);
     },
-    [],
+    [searchParams, setSearchParams],
   );
 
   const handleActivityClick = (activity: ActivityDto) => {

@@ -48,14 +48,14 @@ public class ExportService : IExportService
             .Where(i => i.ProjectId == project.Id)
             .AsQueryable();
 
-        if (filter.TrackerId.HasValue)
-            query = query.Where(i => i.TrackerId == filter.TrackerId.Value);
+        if (filter.TrackerId is { Length: > 0 })
+            query = query.Where(i => filter.TrackerId.Contains(i.TrackerId));
 
-        if (filter.StatusId.HasValue)
-            query = query.Where(i => i.StatusId == filter.StatusId.Value);
+        if (filter.StatusId is { Length: > 0 })
+            query = query.Where(i => filter.StatusId.Contains(i.StatusId));
 
-        if (filter.PriorityId.HasValue)
-            query = query.Where(i => i.PriorityId == filter.PriorityId.Value);
+        if (filter.PriorityId is { Length: > 0 })
+            query = query.Where(i => filter.PriorityId.Contains(i.PriorityId));
 
         if (filter.CategoryId.HasValue)
             query = query.Where(i => i.CategoryId == filter.CategoryId.Value);
@@ -64,7 +64,11 @@ public class ExportService : IExportService
             query = query.Where(i => i.VersionId == filter.VersionId.Value);
 
         if (filter.AssignedToId.HasValue)
-            query = query.Where(i => i.AssignedToId == filter.AssignedToId.Value);
+        {
+            query = filter.AssignedToId.Value == 0
+                ? query.Where(i => i.AssignedToId == null)
+                : query.Where(i => i.AssignedToId == filter.AssignedToId.Value);
+        }
 
         if (filter.AuthorId.HasValue)
             query = query.Where(i => i.AuthorId == filter.AuthorId.Value);
@@ -78,14 +82,44 @@ public class ExportService : IExportService
         if (filter.IsClosed.HasValue)
             query = query.Where(i => i.Status.IsClosed == filter.IsClosed.Value);
 
+        if (filter.StartDateFrom.HasValue)
+            query = query.Where(i => i.StartDate.HasValue && i.StartDate.Value >= filter.StartDateFrom.Value);
+
+        if (filter.StartDateTo.HasValue)
+            query = query.Where(i => i.StartDate.HasValue && i.StartDate.Value <= filter.StartDateTo.Value);
+
+        if (filter.DueDateFrom.HasValue)
+            query = query.Where(i => i.DueDate.HasValue && i.DueDate.Value >= filter.DueDateFrom.Value);
+
+        if (filter.DueDateTo.HasValue)
+            query = query.Where(i => i.DueDate.HasValue && i.DueDate.Value <= filter.DueDateTo.Value);
+
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var term = filter.Search.ToLower();
-            query = query.Where(i => i.Subject.ToLower().Contains(term));
+            var term = filter.Search.Trim().ToLower();
+            query = query.Where(i =>
+                i.Subject.ToLower().Contains(term) ||
+                (i.Description != null && i.Description.ToLower().Contains(term)));
         }
 
+        var sortDescending = filter.IsSortDescending;
+
+        query = filter.SortBy?.ToLower() switch
+        {
+            "subject" => sortDescending ? query.OrderByDescending(i => i.Subject) : query.OrderBy(i => i.Subject),
+            "status" or "statusname" => sortDescending ? query.OrderByDescending(i => i.Status.Position) : query.OrderBy(i => i.Status.Position),
+            "priority" or "priorityname" => sortDescending ? query.OrderByDescending(i => i.Priority.Position) : query.OrderBy(i => i.Priority.Position),
+            "tracker" or "trackername" => sortDescending ? query.OrderByDescending(i => i.Tracker.Position) : query.OrderBy(i => i.Tracker.Position),
+            "assignee" or "assignedtoname" => sortDescending
+                ? query.OrderByDescending(i => i.AssignedToId == null).ThenByDescending(i => i.AssignedTo != null ? i.AssignedTo.Username : string.Empty)
+                : query.OrderBy(i => i.AssignedToId == null).ThenBy(i => i.AssignedTo != null ? i.AssignedTo.Username : string.Empty),
+            "doneratio" => sortDescending ? query.OrderByDescending(i => i.DoneRatio) : query.OrderBy(i => i.DoneRatio),
+            "updated" or "updatedat" => sortDescending ? query.OrderByDescending(i => i.UpdatedAt) : query.OrderBy(i => i.UpdatedAt),
+            "createdat" => sortDescending ? query.OrderByDescending(i => i.CreatedAt) : query.OrderBy(i => i.CreatedAt),
+            _ => sortDescending ? query.OrderByDescending(i => i.CreatedAt) : query.OrderBy(i => i.CreatedAt)
+        };
+
         var issues = await query
-            .OrderByDescending(i => i.CreatedAt)
             .Take(MaxExportRows)
             .ToListAsync();
 
@@ -282,14 +316,14 @@ public class ExportService : IExportService
             .Where(i => i.ProjectId == project.Id)
             .AsQueryable();
 
-        if (filter.TrackerId.HasValue)
-            query = query.Where(i => i.TrackerId == filter.TrackerId.Value);
+        if (filter.TrackerId is { Length: > 0 })
+            query = query.Where(i => filter.TrackerId.Contains(i.TrackerId));
 
-        if (filter.StatusId.HasValue)
-            query = query.Where(i => i.StatusId == filter.StatusId.Value);
+        if (filter.StatusId is { Length: > 0 })
+            query = query.Where(i => filter.StatusId.Contains(i.StatusId));
 
-        if (filter.PriorityId.HasValue)
-            query = query.Where(i => i.PriorityId == filter.PriorityId.Value);
+        if (filter.PriorityId is { Length: > 0 })
+            query = query.Where(i => filter.PriorityId.Contains(i.PriorityId));
 
         if (filter.CategoryId.HasValue)
             query = query.Where(i => i.CategoryId == filter.CategoryId.Value);
@@ -298,22 +332,62 @@ public class ExportService : IExportService
             query = query.Where(i => i.VersionId == filter.VersionId.Value);
 
         if (filter.AssignedToId.HasValue)
-            query = query.Where(i => i.AssignedToId == filter.AssignedToId.Value);
+        {
+            query = filter.AssignedToId.Value == 0
+                ? query.Where(i => i.AssignedToId == null)
+                : query.Where(i => i.AssignedToId == filter.AssignedToId.Value);
+        }
 
         if (filter.AuthorId.HasValue)
             query = query.Where(i => i.AuthorId == filter.AuthorId.Value);
 
+        if (filter.ParentIssueId.HasValue)
+            query = query.Where(i => i.ParentIssueId == filter.ParentIssueId.Value);
+
+        if (filter.IsPrivate.HasValue)
+            query = query.Where(i => i.IsPrivate == filter.IsPrivate.Value);
+
         if (filter.IsClosed.HasValue)
             query = query.Where(i => i.Status.IsClosed == filter.IsClosed.Value);
 
+        if (filter.StartDateFrom.HasValue)
+            query = query.Where(i => i.StartDate.HasValue && i.StartDate.Value >= filter.StartDateFrom.Value);
+
+        if (filter.StartDateTo.HasValue)
+            query = query.Where(i => i.StartDate.HasValue && i.StartDate.Value <= filter.StartDateTo.Value);
+
+        if (filter.DueDateFrom.HasValue)
+            query = query.Where(i => i.DueDate.HasValue && i.DueDate.Value >= filter.DueDateFrom.Value);
+
+        if (filter.DueDateTo.HasValue)
+            query = query.Where(i => i.DueDate.HasValue && i.DueDate.Value <= filter.DueDateTo.Value);
+
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var term = filter.Search.ToLower();
-            query = query.Where(i => i.Subject.ToLower().Contains(term));
+            var term = filter.Search.Trim().ToLower();
+            query = query.Where(i =>
+                i.Subject.ToLower().Contains(term) ||
+                (i.Description != null && i.Description.ToLower().Contains(term)));
         }
 
+        var sortDescending = filter.IsSortDescending;
+
+        query = filter.SortBy?.ToLower() switch
+        {
+            "subject" => sortDescending ? query.OrderByDescending(i => i.Subject) : query.OrderBy(i => i.Subject),
+            "status" or "statusname" => sortDescending ? query.OrderByDescending(i => i.Status.Position) : query.OrderBy(i => i.Status.Position),
+            "priority" or "priorityname" => sortDescending ? query.OrderByDescending(i => i.Priority.Position) : query.OrderBy(i => i.Priority.Position),
+            "tracker" or "trackername" => sortDescending ? query.OrderByDescending(i => i.Tracker.Position) : query.OrderBy(i => i.Tracker.Position),
+            "assignee" or "assignedtoname" => sortDescending
+                ? query.OrderByDescending(i => i.AssignedToId == null).ThenByDescending(i => i.AssignedTo != null ? i.AssignedTo.Username : string.Empty)
+                : query.OrderBy(i => i.AssignedToId == null).ThenBy(i => i.AssignedTo != null ? i.AssignedTo.Username : string.Empty),
+            "doneratio" => sortDescending ? query.OrderByDescending(i => i.DoneRatio) : query.OrderBy(i => i.DoneRatio),
+            "updated" or "updatedat" => sortDescending ? query.OrderByDescending(i => i.UpdatedAt) : query.OrderBy(i => i.UpdatedAt),
+            "createdat" => sortDescending ? query.OrderByDescending(i => i.CreatedAt) : query.OrderBy(i => i.CreatedAt),
+            _ => sortDescending ? query.OrderByDescending(i => i.CreatedAt) : query.OrderBy(i => i.CreatedAt)
+        };
+
         var issues = await query
-            .OrderByDescending(i => i.CreatedAt)
             .Take(MaxExportRows)
             .ToListAsync();
 

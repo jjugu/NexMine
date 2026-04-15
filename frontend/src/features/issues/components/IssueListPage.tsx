@@ -248,7 +248,12 @@ export default function IssueListPage() {
   const priorityIdFilter = searchParams.get('priorityId') ?? '';
   const assignedToIdFilter = searchParams.get('assignedToId') ?? '';
   const sortBy = (searchParams.get('sortBy') ?? 'createdAt') as SortField | 'createdAt';
-  const sortDesc = searchParams.get('sortDesc') !== 'false';
+  const sortDirParam = searchParams.get('sortDir');
+  const sortDir = sortDirParam === 'asc' || sortDirParam === 'desc'
+    ? sortDirParam
+    : searchParams.get('sortDesc') === 'false'
+      ? 'asc'
+      : 'desc';
 
   const [searchInput, setSearchInput] = useState(searchFromUrl);
   const [isExporting, setIsExporting] = useState(false);
@@ -399,7 +404,7 @@ export default function IssueListPage() {
   }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build query params
-  const queryParams: Record<string, string | number | boolean | undefined> = {
+  const queryParams: Record<string, string | number | undefined> = {
     Page: page,
     PageSize: pageSize,
     Search: searchFromUrl || undefined,
@@ -408,7 +413,7 @@ export default function IssueListPage() {
     PriorityId: priorityIdFilter ? Number(priorityIdFilter) : undefined,
     AssignedToId: assignedToIdFilter ? Number(assignedToIdFilter) : undefined,
     SortBy: sortBy,
-    SortDesc: sortDesc,
+    SortDir: sortDir,
   };
 
   const { data: issuesData, isLoading, isError, isFetching, refetch } = useQuery({
@@ -438,11 +443,12 @@ export default function IssueListPage() {
 
     const newParams = new URLSearchParams(searchParams);
     if (sortBy === sortField) {
-      newParams.set('sortDesc', String(!sortDesc));
+      newParams.set('sortDir', sortDir === 'desc' ? 'asc' : 'desc');
     } else {
       newParams.set('sortBy', sortField);
-      newParams.set('sortDesc', 'true');
+      newParams.set('sortDir', 'desc');
     }
+    newParams.delete('sortDesc');
     newParams.set('page', '1');
     setSearchParams(newParams, { replace: true });
   }
@@ -525,10 +531,12 @@ export default function IssueListPage() {
     try {
       const exportParams: Record<string, string | number | undefined> = {
         search: searchFromUrl || undefined,
-        trackerId: trackerIdFilter ? Number(trackerIdFilter) : undefined,
-        statusId: statusIdFilter ? Number(statusIdFilter) : undefined,
-        priorityId: priorityIdFilter ? Number(priorityIdFilter) : undefined,
+        trackerId: trackerIdFilter || undefined,
+        statusId: statusIdFilter || undefined,
+        priorityId: priorityIdFilter || undefined,
         assignedToId: assignedToIdFilter ? Number(assignedToIdFilter) : undefined,
+        sortBy: sortBy,
+        sortDir: sortDir,
       };
       const response = await axiosInstance.get(
         `/projects/${identifier}/issues/export`,
@@ -550,7 +558,7 @@ export default function IssueListPage() {
     } finally {
       setIsExporting(false);
     }
-  }, [identifier, searchFromUrl, trackerIdFilter, statusIdFilter, priorityIdFilter, assignedToIdFilter]);
+  }, [identifier, searchFromUrl, trackerIdFilter, statusIdFilter, priorityIdFilter, assignedToIdFilter, sortBy, sortDir]);
 
   const handleExportPdf = useCallback(async () => {
     if (!identifier) return;
@@ -558,10 +566,12 @@ export default function IssueListPage() {
     try {
       const exportParams: Record<string, string | number | undefined> = {
         search: searchFromUrl || undefined,
-        trackerId: trackerIdFilter ? Number(trackerIdFilter) : undefined,
-        statusId: statusIdFilter ? Number(statusIdFilter) : undefined,
-        priorityId: priorityIdFilter ? Number(priorityIdFilter) : undefined,
+        trackerId: trackerIdFilter || undefined,
+        statusId: statusIdFilter || undefined,
+        priorityId: priorityIdFilter || undefined,
         assignedToId: assignedToIdFilter ? Number(assignedToIdFilter) : undefined,
+        sortBy: sortBy,
+        sortDir: sortDir,
       };
       const response = await axiosInstance.get(
         `/projects/${identifier}/issues/export/pdf`,
@@ -578,7 +588,7 @@ export default function IssueListPage() {
     } finally {
       setIsExportingPdf(false);
     }
-  }, [identifier, searchFromUrl, trackerIdFilter, statusIdFilter, priorityIdFilter, assignedToIdFilter]);
+  }, [identifier, searchFromUrl, trackerIdFilter, statusIdFilter, priorityIdFilter, assignedToIdFilter, sortBy, sortDir]);
 
   // --- Column customization handlers ---
   function handleToggleColumn(key: string) {
@@ -604,7 +614,7 @@ export default function IssueListPage() {
     [selectedColumns],
   );
 
-  const sortDirection = sortDesc ? 'desc' : 'asc';
+  const sortDirection: 'asc' | 'desc' = sortDir;
 
   // --- Context menu handlers ---
   function handleContextMenu(event: React.MouseEvent, issue: IssueDto) {

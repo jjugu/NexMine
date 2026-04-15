@@ -90,7 +90,7 @@ export default function KanbanBoardPage() {
   const { refetch: refetchStatuses, ...statusesQuery } = useQuery({
     queryKey: ['issue-statuses'],
     queryFn: fetchStatuses,
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { refetch: refetchIssues, ...issuesQuery } = useQuery({

@@ -113,6 +113,10 @@ function Loading() {
   );
 }
 
+function withRouteBoundary(element: ReactNode) {
+  return <ErrorBoundary>{element}</ErrorBoundary>;
+}
+
 function AppContent() {
   const { mode } = useThemeStore();
 
@@ -154,72 +158,72 @@ function AppContent() {
       <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ko">
       <BrowserRouter>
         <ErrorBoundary>
-        <Suspense fallback={<Loading />}>
-          <Routes>
+          <Suspense fallback={<Loading />}>
+            <Routes>
             {/* Auth routes */}
             <Route element={<AuthLayout />}>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/login" element={withRouteBoundary(<LoginPage />)} />
+              <Route path="/register" element={withRouteBoundary(<RegisterPage />)} />
             </Route>
 
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/my/page" element={<MyPage />} />
-                <Route path="/my/settings" element={<UserSettingsPage />} />
-                <Route path="/projects" element={<ProjectListPage />} />
-                <Route path="/projects/:identifier" element={<ProjectDetailPage />} />
-                <Route path="/projects/:identifier/issues" element={<IssueListPage />} />
-                <Route path="/projects/:identifier/issues/new" element={<IssueCreatePage />} />
-                <Route path="/projects/:identifier/issues/:id" element={<IssueDetailPage />} />
-                <Route path="/projects/:identifier/versions" element={<VersionListPage />} />
-                <Route path="/projects/:identifier/board" element={<KanbanBoardPage />} />
-                <Route path="/projects/:identifier/kanban" element={<KanbanBoardPage />} />
-                <Route path="/projects/:identifier/gantt" element={<GanttChartPage />} />
-                <Route path="/projects/:identifier/calendar" element={<CalendarPage />} />
-                <Route path="/projects/:identifier/roadmap" element={<RoadmapPage />} />
-                <Route path="/projects/:identifier/wiki" element={<WikiIndexPage />} />
-                <Route path="/projects/:identifier/wiki/new" element={<WikiPageEditor />} />
-                <Route path="/projects/:identifier/wiki/:slug" element={<WikiIndexPage />} />
-                <Route path="/projects/:identifier/wiki/:slug/edit" element={<WikiPageEditor />} />
-                <Route path="/projects/:identifier/documents" element={<DocumentListPage />} />
-                <Route path="/projects/:identifier/documents/:id" element={<DocumentDetailPage />} />
-                <Route path="/projects/:identifier/forums" element={<ForumPage />} />
-                <Route path="/projects/:identifier/news" element={<NewsPage />} />
-                <Route path="/projects/:identifier/activity" element={<ActivityPage />} />
-                <Route path="/projects/:identifier/settings" element={<ProjectSettingsPage />} />
+                <Route path="/dashboard" element={withRouteBoundary(<DashboardPage />)} />
+                <Route path="/my/page" element={withRouteBoundary(<MyPage />)} />
+                <Route path="/my/settings" element={withRouteBoundary(<UserSettingsPage />)} />
+                <Route path="/projects" element={withRouteBoundary(<ProjectListPage />)} />
+                <Route path="/projects/:identifier" element={withRouteBoundary(<ProjectDetailPage />)} />
+                <Route path="/projects/:identifier/issues" element={withRouteBoundary(<IssueListPage />)} />
+                <Route path="/projects/:identifier/issues/new" element={withRouteBoundary(<IssueCreatePage />)} />
+                <Route path="/projects/:identifier/issues/:id" element={withRouteBoundary(<IssueDetailPage />)} />
+                <Route path="/projects/:identifier/versions" element={withRouteBoundary(<VersionListPage />)} />
+                <Route path="/projects/:identifier/board" element={withRouteBoundary(<KanbanBoardPage />)} />
+                <Route path="/projects/:identifier/kanban" element={withRouteBoundary(<KanbanBoardPage />)} />
+                <Route path="/projects/:identifier/gantt" element={withRouteBoundary(<GanttChartPage />)} />
+                <Route path="/projects/:identifier/calendar" element={withRouteBoundary(<CalendarPage />)} />
+                <Route path="/projects/:identifier/roadmap" element={withRouteBoundary(<RoadmapPage />)} />
+                <Route path="/projects/:identifier/wiki" element={withRouteBoundary(<WikiIndexPage />)} />
+                <Route path="/projects/:identifier/wiki/new" element={withRouteBoundary(<WikiPageEditor />)} />
+                <Route path="/projects/:identifier/wiki/:slug" element={withRouteBoundary(<WikiIndexPage />)} />
+                <Route path="/projects/:identifier/wiki/:slug/edit" element={withRouteBoundary(<WikiPageEditor />)} />
+                <Route path="/projects/:identifier/documents" element={withRouteBoundary(<DocumentListPage />)} />
+                <Route path="/projects/:identifier/documents/:id" element={withRouteBoundary(<DocumentDetailPage />)} />
+                <Route path="/projects/:identifier/forums" element={withRouteBoundary(<ForumPage />)} />
+                <Route path="/projects/:identifier/news" element={withRouteBoundary(<NewsPage />)} />
+                <Route path="/projects/:identifier/activity" element={withRouteBoundary(<ActivityPage />)} />
+                <Route path="/projects/:identifier/settings" element={withRouteBoundary(<ProjectSettingsPage />)} />
 
                 {/* Activity */}
-                <Route path="/activity" element={<ActivityPage />} />
+                <Route path="/activity" element={withRouteBoundary(<ActivityPage />)} />
 
                 {/* Reports */}
-                <Route path="/reports/time" element={<TimeReportPage />} />
+                <Route path="/reports/time" element={withRouteBoundary(<TimeReportPage />)} />
 
                 {/* Search */}
-                <Route path="/search" element={<SearchResultsPage />} />
+                <Route path="/search" element={withRouteBoundary(<SearchResultsPage />)} />
 
                 {/* Admin routes - protected by AdminRoute */}
                 <Route element={<AdminRoute />}>
-                  <Route path="/admin/users" element={<AdminUsersPage />} />
-                  <Route path="/admin/roles" element={<AdminRolesPage />} />
-                  <Route path="/admin/trackers" element={<AdminTrackersPage />} />
-                  <Route path="/admin/statuses" element={<AdminStatusesPage />} />
-                  <Route path="/admin/priorities" element={<AdminPrioritiesPage />} />
-                  <Route path="/admin/custom-fields" element={<AdminCustomFieldsPage />} />
-                  <Route path="/admin/workflows" element={<AdminWorkflowsPage />} />
-                  <Route path="/admin/issue-templates" element={<AdminIssueTemplatesPage />} />
-                  <Route path="/admin/groups" element={<AdminGroupsPage />} />
-                  <Route path="/admin/groups/:id/dashboard" element={<GroupDashboardPage />} />
-                  <Route path="/admin/settings" element={<AdminSettingsPage />} />
+                  <Route path="/admin/users" element={withRouteBoundary(<AdminUsersPage />)} />
+                  <Route path="/admin/roles" element={withRouteBoundary(<AdminRolesPage />)} />
+                  <Route path="/admin/trackers" element={withRouteBoundary(<AdminTrackersPage />)} />
+                  <Route path="/admin/statuses" element={withRouteBoundary(<AdminStatusesPage />)} />
+                  <Route path="/admin/priorities" element={withRouteBoundary(<AdminPrioritiesPage />)} />
+                  <Route path="/admin/custom-fields" element={withRouteBoundary(<AdminCustomFieldsPage />)} />
+                  <Route path="/admin/workflows" element={withRouteBoundary(<AdminWorkflowsPage />)} />
+                  <Route path="/admin/issue-templates" element={withRouteBoundary(<AdminIssueTemplatesPage />)} />
+                  <Route path="/admin/groups" element={withRouteBoundary(<AdminGroupsPage />)} />
+                  <Route path="/admin/groups/:id/dashboard" element={withRouteBoundary(<GroupDashboardPage />)} />
+                  <Route path="/admin/settings" element={withRouteBoundary(<AdminSettingsPage />)} />
                 </Route>
               </Route>
             </Route>
 
             {/* Default redirect */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Suspense>
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </BrowserRouter>
       </LocalizationProvider>
