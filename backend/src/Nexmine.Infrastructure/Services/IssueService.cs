@@ -13,6 +13,7 @@ using Nexmine.Application.Features.Realtime.Interfaces;
 using Nexmine.Application.Features.Watchers.Interfaces;
 using Nexmine.Application.Features.Workflows.Interfaces;
 using Nexmine.Domain.Entities;
+using Nexmine.Domain.Exceptions;
 using Nexmine.Infrastructure.Data;
 
 namespace Nexmine.Infrastructure.Services;
@@ -162,7 +163,7 @@ public class IssueService : IIssueService
         };
     }
 
-    public async Task<IssueDetailDto?> GetByIdAsync(int id)
+    public async Task<IssueDetailDto?> GetByIdAsync(int id, int userId)
     {
         var issue = await _dbContext.Issues
             .Include(i => i.Tracker)
@@ -177,6 +178,8 @@ public class IssueService : IIssueService
 
         if (issue is null)
             return null;
+
+        await EnsureProjectAccessAsync(issue.ProjectId, userId);
 
         var dto = MapToDetailDto(issue);
         dto.CustomValues = await _customFieldService.GetValuesAsync("issue", issue.Id);
@@ -316,6 +319,8 @@ public class IssueService : IIssueService
 
         if (issue is null)
             return null;
+
+        await EnsureProjectAccessAsync(issue.ProjectId, userId);
 
         // Validate workflow transition if status is being changed
         if (request.StatusId.HasValue && request.StatusId.Value != issue.StatusId)
@@ -542,11 +547,13 @@ public class IssueService : IIssueService
         return updatedDto;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int id, int userId)
     {
         var issue = await _dbContext.Issues.FindAsync(id);
         if (issue is null)
             return false;
+
+        await EnsureProjectAccessAsync(issue.ProjectId, userId);
 
         _dbContext.Issues.Remove(issue);
         await _dbContext.SaveChangesAsync();
@@ -561,6 +568,8 @@ public class IssueService : IIssueService
 
         if (issue is null)
             return null;
+
+        await EnsureProjectAccessAsync(issue.ProjectId, userId);
 
         var journalDetails = new List<JournalDetail>();
 
@@ -661,6 +670,22 @@ public class IssueService : IIssueService
 
         if (issues.Count == 0)
             return 0;
+
+        var isAdmin = await IsAdminAsync(userId);
+        if (!isAdmin)
+        {
+            var projectIds = issues.Select(i => i.ProjectId).Distinct().ToList();
+            var accessibleProjectCount = await _dbContext.ProjectMemberships
+                .Where(pm => pm.UserId == userId && projectIds.Contains(pm.ProjectId))
+                .Select(pm => pm.ProjectId)
+                .Distinct()
+                .CountAsync();
+
+            if (accessibleProjectCount != projectIds.Count)
+            {
+                throw new ForbiddenAccessException("일부 일감에 접근할 권한이 없습니다.");
+            }
+        }
 
         // Pre-load the new status if changing status
         IssueStatus? newStatus = null;
@@ -813,6 +838,8 @@ public class IssueService : IIssueService
             .FirstOrDefaultAsync(i => i.Id == issueId)
             ?? throw new KeyNotFoundException("일감을 찾을 수 없습니다.");
 
+        await EnsureProjectAccessAsync(source.ProjectId, userId);
+
         var targetProjectId = request.TargetProjectId > 0 ? request.TargetProjectId : source.ProjectId;
         var isSameProject = targetProjectId == source.ProjectId;
 
@@ -821,6 +848,8 @@ public class IssueService : IIssueService
         {
             var targetProject = await _dbContext.Projects.FindAsync(targetProjectId)
                 ?? throw new KeyNotFoundException("대상 프로젝트를 찾을 수 없습니다.");
+
+            await EnsureProjectAccessAsync(targetProject.Id, userId);
         }
 
         // Get default status (New)
@@ -901,11 +930,15 @@ public class IssueService : IIssueService
             .FirstOrDefaultAsync(i => i.Id == issueId)
             ?? throw new KeyNotFoundException("일감을 찾을 수 없습니다.");
 
+        await EnsureProjectAccessAsync(issue.ProjectId, userId);
+
         var targetProject = await _dbContext.Projects.FindAsync(request.TargetProjectId)
             ?? throw new KeyNotFoundException("대상 프로젝트를 찾을 수 없습니다.");
 
         if (issue.ProjectId == request.TargetProjectId)
             throw new InvalidOperationException("같은 프로젝트로는 이동할 수 없습니다.");
+
+        await EnsureProjectAccessAsync(targetProject.Id, userId);
 
         var oldProjectName = issue.Project.Name;
 
@@ -1084,6 +1117,30 @@ public class IssueService : IIssueService
         }
 
         return result;
+    }
+
+    private async Task EnsureProjectAccessAsync(int projectId, int userId)
+    {
+        if (await IsAdminAsync(userId))
+        {
+            return;
+        }
+
+        var isMember = await _dbContext.ProjectMemberships
+            .AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == userId);
+
+        if (!isMember)
+        {
+            throw new ForbiddenAccessException("이 프로젝트에 접근할 권한이 없습니다.");
+        }
+    }
+
+    private async Task<bool> IsAdminAsync(int userId)
+    {
+        return await _dbContext.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.IsAdmin)
+            .FirstOrDefaultAsync();
     }
 
     private static string[] ParseCsvLine(string line)

@@ -47,7 +47,8 @@ public class IssuesController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(int id)
     {
-        var issue = await _issueService.GetByIdAsync(id);
+        var userId = User.GetUserId();
+        var issue = await _issueService.GetByIdAsync(id, userId);
 
         if (issue is null)
         {
@@ -107,6 +108,7 @@ public class IssuesController : ControllerBase
     [HttpPut("bulk-update")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> BulkUpdateAsync([FromBody] BulkUpdateIssuesRequest request)
     {
         var userId = User.GetUserId();
@@ -117,6 +119,7 @@ public class IssuesController : ControllerBase
     [HttpPost("{id:int}/copy")]
     [ProducesResponseType(typeof(IssueDetailDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CopyIssueAsync(int id, [FromBody] CopyIssueRequest request)
     {
         var userId = User.GetUserId();
@@ -127,6 +130,7 @@ public class IssuesController : ControllerBase
     [HttpPut("{id:int}/move")]
     [ProducesResponseType(typeof(IssueDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> MoveIssueAsync(int id, [FromBody] MoveIssueRequest request)
     {
@@ -162,7 +166,8 @@ public class IssuesController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(int id)
     {
-        var success = await _issueService.DeleteAsync(id);
+        var userId = User.GetUserId();
+        var success = await _issueService.DeleteAsync(id, userId);
 
         if (!success)
         {

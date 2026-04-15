@@ -27,6 +27,8 @@ interface KanbanIssueRaw {
   position?: number;
 }
 
+const KANBAN_PAGE_SIZE = 100;
+
 interface KanbanIssuesResponse {
   items?: KanbanIssueRaw[] | null;
   totalCount?: number;
@@ -38,14 +40,30 @@ function fetchStatuses() {
     .then((res) => res.data);
 }
 
-function fetchKanbanIssues(identifier: string) {
-  // Fetch with large page size to get all issues; the backend may add
-  // statusId / position fields to IssueDto in the kanban context.
-  return axiosInstance
-    .get<KanbanIssuesResponse>(`/projects/${identifier}/issues`, {
-      params: { Page: 1, PageSize: 100 },
-    })
-    .then((res) => res.data);
+async function fetchKanbanIssues(identifier: string) {
+  const items: KanbanIssueRaw[] = [];
+  let page = 1;
+  let totalCount = 0;
+
+  while (true) {
+    const response = await axiosInstance.get<KanbanIssuesResponse>(`/projects/${identifier}/issues`, {
+      params: { Page: page, PageSize: KANBAN_PAGE_SIZE },
+    });
+
+    const data = response.data;
+    const pageItems = data.items ?? [];
+
+    items.push(...pageItems);
+    totalCount = data.totalCount ?? items.length;
+
+    if (pageItems.length < KANBAN_PAGE_SIZE || items.length >= totalCount) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return { items, totalCount };
 }
 
 function fetchProject(identifier: string) {

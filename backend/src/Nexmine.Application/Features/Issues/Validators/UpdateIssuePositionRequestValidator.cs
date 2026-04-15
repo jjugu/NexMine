@@ -8,6 +8,6 @@ public class UpdateIssuePositionRequestValidator : AbstractValidator<UpdateIssue
     public UpdateIssuePositionRequestValidator()
     {
         RuleFor(x => x.Position)
-            .GreaterThanOrEqualTo(0).WithMessage("Position must be non-negative.");
+            .GreaterThanOrEqualTo(0).WithMessage("위치는 0 이상이어야 합니다.");
     }
 }
