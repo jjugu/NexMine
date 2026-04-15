@@ -160,68 +160,66 @@ function AppContent() {
         <ErrorBoundary>
           <Suspense fallback={<Loading />}>
             <Routes>
-            {/* Auth routes */}
-            <Route element={<AuthLayout />}>
-              <Route path="/login" element={withRouteBoundary(<LoginPage />)} />
-              <Route path="/register" element={withRouteBoundary(<RegisterPage />)} />
-            </Route>
+              {/* Auth routes */}
+              <Route element={<AuthLayout />}>
+                <Route path="/login" element={withRouteBoundary(<LoginPage />)} />
+                <Route path="/register" element={withRouteBoundary(<RegisterPage />)} />
+              </Route>
 
-            {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route element={<AppLayout />}>
-                <Route path="/dashboard" element={withRouteBoundary(<DashboardPage />)} />
-                <Route path="/my/page" element={withRouteBoundary(<MyPage />)} />
-                <Route path="/my/settings" element={withRouteBoundary(<UserSettingsPage />)} />
-                <Route path="/projects" element={withRouteBoundary(<ProjectListPage />)} />
-                <Route path="/projects/:identifier" element={withRouteBoundary(<ProjectDetailPage />)} />
-                <Route path="/projects/:identifier/issues" element={withRouteBoundary(<IssueListPage />)} />
-                <Route path="/projects/:identifier/issues/new" element={withRouteBoundary(<IssueCreatePage />)} />
-                <Route path="/projects/:identifier/issues/:id" element={withRouteBoundary(<IssueDetailPage />)} />
-                <Route path="/projects/:identifier/versions" element={withRouteBoundary(<VersionListPage />)} />
-                <Route path="/projects/:identifier/board" element={withRouteBoundary(<KanbanBoardPage />)} />
-                <Route path="/projects/:identifier/kanban" element={withRouteBoundary(<KanbanBoardPage />)} />
-                <Route path="/projects/:identifier/gantt" element={withRouteBoundary(<GanttChartPage />)} />
-                <Route path="/projects/:identifier/calendar" element={withRouteBoundary(<CalendarPage />)} />
-                <Route path="/projects/:identifier/roadmap" element={withRouteBoundary(<RoadmapPage />)} />
-                <Route path="/projects/:identifier/wiki" element={withRouteBoundary(<WikiIndexPage />)} />
-                <Route path="/projects/:identifier/wiki/new" element={withRouteBoundary(<WikiPageEditor />)} />
-                <Route path="/projects/:identifier/wiki/:slug" element={withRouteBoundary(<WikiIndexPage />)} />
-                <Route path="/projects/:identifier/wiki/:slug/edit" element={withRouteBoundary(<WikiPageEditor />)} />
-                <Route path="/projects/:identifier/documents" element={withRouteBoundary(<DocumentListPage />)} />
-                <Route path="/projects/:identifier/documents/:id" element={withRouteBoundary(<DocumentDetailPage />)} />
-                <Route path="/projects/:identifier/forums" element={withRouteBoundary(<ForumPage />)} />
-                <Route path="/projects/:identifier/news" element={withRouteBoundary(<NewsPage />)} />
-                <Route path="/projects/:identifier/activity" element={withRouteBoundary(<ActivityPage />)} />
-                <Route path="/projects/:identifier/settings" element={withRouteBoundary(<ProjectSettingsPage />)} />
+              {/* Protected routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route element={<AppLayout />}>
+                  <Route path="/dashboard" element={withRouteBoundary(<DashboardPage />)} />
+                  <Route path="/my/page" element={withRouteBoundary(<MyPage />)} />
+                  <Route path="/my/settings" element={withRouteBoundary(<UserSettingsPage />)} />
+                  <Route path="/projects" element={withRouteBoundary(<ProjectListPage />)} />
 
-                {/* Activity */}
-                <Route path="/activity" element={withRouteBoundary(<ActivityPage />)} />
+                  <Route path="/projects/:identifier">
+                    <Route index element={withRouteBoundary(<ProjectDetailPage />)} />
+                    <Route path="issues" element={withRouteBoundary(<IssueListPage />)} />
+                    <Route path="issues/new" element={withRouteBoundary(<IssueCreatePage />)} />
+                    <Route path="issues/:id" element={withRouteBoundary(<IssueDetailPage />)} />
+                    <Route path="versions" element={withRouteBoundary(<VersionListPage />)} />
+                    <Route path="board" element={withRouteBoundary(<KanbanBoardPage />)} />
+                    <Route path="kanban" element={withRouteBoundary(<KanbanBoardPage />)} />
+                    <Route path="gantt" element={withRouteBoundary(<GanttChartPage />)} />
+                    <Route path="calendar" element={withRouteBoundary(<CalendarPage />)} />
+                    <Route path="roadmap" element={withRouteBoundary(<RoadmapPage />)} />
+                    <Route path="wiki" element={withRouteBoundary(<WikiIndexPage />)} />
+                    <Route path="wiki/new" element={withRouteBoundary(<WikiPageEditor />)} />
+                    <Route path="wiki/:slug" element={withRouteBoundary(<WikiIndexPage />)} />
+                    <Route path="wiki/:slug/edit" element={withRouteBoundary(<WikiPageEditor />)} />
+                    <Route path="documents" element={withRouteBoundary(<DocumentListPage />)} />
+                    <Route path="documents/:id" element={withRouteBoundary(<DocumentDetailPage />)} />
+                    <Route path="forums" element={withRouteBoundary(<ForumPage />)} />
+                    <Route path="news" element={withRouteBoundary(<NewsPage />)} />
+                    <Route path="activity" element={withRouteBoundary(<ActivityPage />)} />
+                    <Route path="settings" element={withRouteBoundary(<ProjectSettingsPage />)} />
+                  </Route>
 
-                {/* Reports */}
-                <Route path="/reports/time" element={withRouteBoundary(<TimeReportPage />)} />
+                  <Route path="/activity" element={withRouteBoundary(<ActivityPage />)} />
+                  <Route path="/reports/time" element={withRouteBoundary(<TimeReportPage />)} />
+                  <Route path="/search" element={withRouteBoundary(<SearchResultsPage />)} />
 
-                {/* Search */}
-                <Route path="/search" element={withRouteBoundary(<SearchResultsPage />)} />
-
-                {/* Admin routes - protected by AdminRoute */}
-                <Route element={<AdminRoute />}>
-                  <Route path="/admin/users" element={withRouteBoundary(<AdminUsersPage />)} />
-                  <Route path="/admin/roles" element={withRouteBoundary(<AdminRolesPage />)} />
-                  <Route path="/admin/trackers" element={withRouteBoundary(<AdminTrackersPage />)} />
-                  <Route path="/admin/statuses" element={withRouteBoundary(<AdminStatusesPage />)} />
-                  <Route path="/admin/priorities" element={withRouteBoundary(<AdminPrioritiesPage />)} />
-                  <Route path="/admin/custom-fields" element={withRouteBoundary(<AdminCustomFieldsPage />)} />
-                  <Route path="/admin/workflows" element={withRouteBoundary(<AdminWorkflowsPage />)} />
-                  <Route path="/admin/issue-templates" element={withRouteBoundary(<AdminIssueTemplatesPage />)} />
-                  <Route path="/admin/groups" element={withRouteBoundary(<AdminGroupsPage />)} />
-                  <Route path="/admin/groups/:id/dashboard" element={withRouteBoundary(<GroupDashboardPage />)} />
-                  <Route path="/admin/settings" element={withRouteBoundary(<AdminSettingsPage />)} />
+                  {/* Admin routes */}
+                  <Route path="/admin" element={<AdminRoute />}>
+                    <Route path="users" element={withRouteBoundary(<AdminUsersPage />)} />
+                    <Route path="roles" element={withRouteBoundary(<AdminRolesPage />)} />
+                    <Route path="trackers" element={withRouteBoundary(<AdminTrackersPage />)} />
+                    <Route path="statuses" element={withRouteBoundary(<AdminStatusesPage />)} />
+                    <Route path="priorities" element={withRouteBoundary(<AdminPrioritiesPage />)} />
+                    <Route path="custom-fields" element={withRouteBoundary(<AdminCustomFieldsPage />)} />
+                    <Route path="workflows" element={withRouteBoundary(<AdminWorkflowsPage />)} />
+                    <Route path="issue-templates" element={withRouteBoundary(<AdminIssueTemplatesPage />)} />
+                    <Route path="groups" element={withRouteBoundary(<AdminGroupsPage />)} />
+                    <Route path="groups/:id/dashboard" element={withRouteBoundary(<GroupDashboardPage />)} />
+                    <Route path="settings" element={withRouteBoundary(<AdminSettingsPage />)} />
+                  </Route>
                 </Route>
               </Route>
-            </Route>
 
-            {/* Default redirect */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              {/* Default redirect */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
